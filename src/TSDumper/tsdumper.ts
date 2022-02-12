@@ -35,8 +35,13 @@ interface ParameterInfo {
     type: TypeInfo;
 }
 
+interface SingleTypeInfo {
+    name: string;
+    typeArguments: SingleTypeInfo[];
+}
+
 interface TypeInfo {
-    names: string[];
+    list: SingleTypeInfo[];
 }
 
 interface GlobalVariableInfo {
@@ -63,55 +68,90 @@ interface ParsedInfo {
     interfaces: InterfaceInfo[];
 }
 
-function extractTypeName(typeNode: ts.TypeNode): string {
+function extractTypeArguments(typeNode: ts.TypeReferenceNode): SingleTypeInfo[] {
+    const typeArguments: SingleTypeInfo[] = [];
+
+    if (!!typeNode.typeArguments) {
+        typeNode.typeArguments.forEach(typeArgument => {
+            typeArguments.push(extractSingleTypeInfo(typeArgument));
+        });
+    }
+
+    return typeArguments;
+}
+function extractSingleTypeInfo(typeNode: ts.TypeNode): SingleTypeInfo {
     if (ts.isTypeReferenceNode(typeNode)
         && ts.isIdentifier(typeNode.typeName)) {
-        return typeNode.typeName.text;
+        return {
+            name: typeNode.typeName.text,
+            typeArguments: extractTypeArguments(typeNode)
+        };
     }
 
     if (ts.isArrayTypeNode(typeNode)) {
-        const typeName = extractTypeName(typeNode.elementType);
-        return `${typeName}[]`;
+        const typeName = extractSingleTypeInfo(typeNode.elementType);
+        return {
+            name: `${typeName}[]`,
+            typeArguments: []
+        };
     }
 
     if (typeNode.kind === SyntaxKind.NumberKeyword) {
-        return "number";
+        return {
+            name: "number",
+            typeArguments: []
+        };
     }
 
     if (typeNode.kind === SyntaxKind.StringKeyword) {
-        return "string";
+        return {
+            name: "string",
+            typeArguments: []
+        };
     }
 
     if (typeNode.kind === SyntaxKind.BooleanKeyword) {
-        return "boolean";
+        return {
+            name: "boolean",
+            typeArguments: []
+        };
     }
 
     if (ts.isLiteralTypeNode(typeNode)) {
         if (typeNode.literal.kind == SyntaxKind.NullKeyword) {
-            return "null";
+            return {
+                name: "null",
+                typeArguments: []
+            };
         }
 
-        return "unhandled_literal"
+        return {
+            name: "unhandled_literal",
+            typeArguments: []
+        };
     }
 
-    return "unhandled";
+    return {
+        name: "unhandled",
+        typeArguments: []
+    };
 }
 
 function extractTypeInfo(typeNode: ts.TypeNode): TypeInfo {
     if (ts.isUnionTypeNode(typeNode)) {
-        const typeNames: string[] = [];
+        const singleTypeInfoList: SingleTypeInfo[] = [];
 
         typeNode.types.forEach(unionTypeChild => {
-            typeNames.push(extractTypeName(unionTypeChild));
+            singleTypeInfoList.push(extractSingleTypeInfo(unionTypeChild));
         });
 
         return {
-            names: typeNames,
+            list: singleTypeInfoList,
         }
     }
 
     return {
-        names: [extractTypeName(typeNode)],
+        list: [extractSingleTypeInfo(typeNode)],
     };
 }
 
