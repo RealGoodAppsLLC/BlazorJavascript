@@ -102,12 +102,18 @@ interface MethodInfo {
     parameters: ParameterInfo[];
 }
 
+interface IndexerInfo {
+    indexType: TypeInfo;
+    returnType: TypeInfo;
+}
+
 interface InterfaceInfo {
     name: string;
     extractTypeParametersResult: ExtractTypeParametersResult;
     extendsList: string[];
     properties: PropertyInfo[];
     methods: MethodInfo[];
+    indexers: IndexerInfo[];
 }
 
 interface ParsedInfo {
@@ -601,12 +607,24 @@ function postProcessParsedInfo(parsedInfo: ParsedInfo): ParsedInfo {
             postProcessedProperties.push(property);
         });
 
+        const postProcessedIndexers: IndexerInfo[] = [];
+
+        interfaceInfo.indexers.forEach(indexer => {
+            if (recursiveCheckForNonSimpleTypeArgument(indexer.indexType)
+                || recursiveCheckForNonSimpleTypeArgument(indexer.returnType)) {
+                return;
+            }
+
+            postProcessedIndexers.push(indexer);
+        });
+
         postProcessedInterfaces.push({
             name: interfaceInfo.name,
             methods: postProcessedMethods,
             extractTypeParametersResult: interfaceInfo.extractTypeParametersResult,
             extendsList: interfaceInfo.extendsList,
             properties: postProcessedProperties,
+            indexers: postProcessedIndexers,
         });
     });
 
@@ -670,12 +688,28 @@ inputTypeDefinitions.forEach(inputTypeDefinition => {
                 });
             });
 
+            const indexers: IndexerInfo[] = [];
+
+            statement.members.forEach(member => {
+                if (!ts.isIndexSignatureDeclaration(member)
+                    || member.parameters.length < 1
+                    || !member.parameters[0].type) {
+                    return;
+                }
+
+                indexers.push({
+                    indexType: extractTypeInfo(member.parameters[0].type),
+                    returnType: extractTypeInfo(member.type)
+                });
+            });
+
             const interfaceInfo: InterfaceInfo = {
                 name: statement.name.text,
                 extendsList: extendsList,
                 extractTypeParametersResult: extractTypeParameters(statement.typeParameters),
                 properties: extractProperties(statement.members),
                 methods: methods,
+                indexers: indexers,
             };
 
             parsedInfo.interfaces.push(interfaceInfo);
