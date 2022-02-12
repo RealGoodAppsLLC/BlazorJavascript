@@ -57,10 +57,23 @@ interface PropertyInfo {
     type: TypeInfo;
 }
 
+interface TypeParameter {
+    name: string;
+    constraint: TypeInfo | null;
+}
+
+interface MethodInfo {
+    name: string;
+    typeParameters: TypeParameter[];
+    returnType: TypeInfo;
+    parameters: ParameterInfo[];
+}
+
 interface InterfaceInfo {
     name: string;
     extendsList: string[];
     properties: PropertyInfo[];
+    methods: MethodInfo[];
 }
 
 interface ParsedInfo {
@@ -96,21 +109,21 @@ function extractSingleTypeInfo(typeNode: ts.TypeNode): SingleTypeInfo {
         };
     }
 
-    if (typeNode.kind === SyntaxKind.NumberKeyword) {
+    if (typeNode.kind === ts.SyntaxKind.NumberKeyword) {
         return {
             name: "number",
             typeArguments: []
         };
     }
 
-    if (typeNode.kind === SyntaxKind.StringKeyword) {
+    if (typeNode.kind === ts.SyntaxKind.StringKeyword) {
         return {
             name: "string",
             typeArguments: []
         };
     }
 
-    if (typeNode.kind === SyntaxKind.BooleanKeyword) {
+    if (typeNode.kind === ts.SyntaxKind.BooleanKeyword) {
         return {
             name: "boolean",
             typeArguments: []
@@ -118,7 +131,7 @@ function extractSingleTypeInfo(typeNode: ts.TypeNode): SingleTypeInfo {
     }
 
     if (ts.isLiteralTypeNode(typeNode)) {
-        if (typeNode.literal.kind == SyntaxKind.NullKeyword) {
+        if (typeNode.literal.kind == ts.SyntaxKind.NullKeyword) {
             return {
                 name: "null",
                 typeArguments: []
@@ -157,7 +170,7 @@ function extractTypeInfo(typeNode: ts.TypeNode): TypeInfo {
 
 function isParameterOptional(parameterDeclaration: ts.ParameterDeclaration): boolean {
     return !!parameterDeclaration.questionToken
-        && parameterDeclaration.questionToken.kind == SyntaxKind.QuestionToken
+        && parameterDeclaration.questionToken.kind == ts.SyntaxKind.QuestionToken
 }
 
 function extractProperties(members: ts.NodeArray<ts.TypeElement>) {
@@ -178,7 +191,7 @@ function extractProperties(members: ts.NodeArray<ts.TypeElement>) {
 
         if (!!member.modifiers) {
             member.modifiers.forEach(modifier => {
-                if (modifier.kind === SyntaxKind.ReadonlyKeyword) {
+                if (modifier.kind === ts.SyntaxKind.ReadonlyKeyword) {
                     isReadonly = true;
                 }
             });
@@ -194,13 +207,31 @@ function extractProperties(members: ts.NodeArray<ts.TypeElement>) {
     return properties;
 }
 
+function extractParameters(member: ts.NodeArray<ts.ParameterDeclaration>): ParameterInfo[] {
+    const parameters: ParameterInfo[] = [];
+
+    member.forEach(parameter => {
+        if (!ts.isIdentifier(parameter.name) || !parameter.type) {
+            return;
+        }
+
+        parameters.push({
+            name: parameter.name.text,
+            isOptional: isParameterOptional(parameter),
+            type: extractTypeInfo(parameter.type),
+        });
+    });
+
+    return parameters;
+}
+
 inputTypeDefinitions.forEach(inputTypeDefinition => {
     const inputPath = `node_modules/typescript/lib/${inputTypeDefinition}.ts`;
     const outputPath = `output/${inputTypeDefinition}.json`;
 
     console.log(`Dumping AST for "${inputPath}" to "${outputPath}"...`);
 
-    const sourceFile: SourceFile = ts.createSourceFile(
+    const sourceFile: ts.SourceFile = ts.createSourceFile(
         'x.ts',
         fs.readFileSync(inputPath, {encoding:'utf8', flag:'r'}),
         ts.ScriptTarget.Latest
@@ -222,7 +253,7 @@ inputTypeDefinitions.forEach(inputTypeDefinition => {
 
             if (!!statement.heritageClauses) {
                 statement.heritageClauses.forEach(heritageClause => {
-                    if (heritageClause.token !== SyntaxKind.ExtendsKeyword) {
+                    if (heritageClause.token !== ts.SyntaxKind.ExtendsKeyword) {
                         console.error("Heritage clause detected without extends keyword.");
                         return;
                     }
@@ -237,10 +268,62 @@ inputTypeDefinitions.forEach(inputTypeDefinition => {
                 });
             }
 
+            const methods: MethodInfo[] = [];
+
+            statement.members.forEach(member => {
+                if (!ts.isMethodSignature(member) || !ts.isIdentifier(member.name) || !member.type) {
+                    return;
+                }
+
+                const typeParameters: TypeParameter[] = [];
+                let anyConstraintsAreNotSimple = false;
+
+                if (!!member.typeParameters) {
+                    member.typeParameters.forEach(typeParameter => {
+                        if (!ts.isIdentifier(typeParameter.name)) {
+                            return;
+                        }
+
+                        // FIXME: For now, we are ignoring defaults for type parameters.
+                        //        We might be able to emulate this with subclassing: https://stackoverflow.com/a/707788.
+                        let constraint: TypeInfo | null = null;
+
+                        if (!!typeParameter.constraint) {
+                            if (!ts.isTypeReferenceNode(typeParameter.constraint)) {
+                                anyConstraintsAreNotSimple = true;
+                                return;
+                            }
+
+                            constraint = extractTypeInfo(typeParameter.constraint);
+                        }
+
+                        typeParameters.push({
+                            name: typeParameter.name.text,
+                            constraint: constraint,
+                        });
+                    });
+                }
+
+                // FIXME: Any function that has something like this is ignored for now:
+                //        foo<K extends keyof Bar>(type: K)
+                //        In the future, we should consider replacing the generic and parameters with a string.
+                if (anyConstraintsAreNotSimple) {
+                    return;
+                }
+
+                methods.push({
+                    name: member.name.text,
+                    parameters: extractParameters(member.parameters),
+                    typeParameters: typeParameters,
+                    returnType: extractTypeInfo(member.type),
+                });
+            });
+
             const interfaceInfo: InterfaceInfo = {
                 name: statement.name.text,
                 extendsList: extendsList,
                 properties: extractProperties(statement.members),
+                methods: methods,
             };
 
             parsedInfo.interfaces.push(interfaceInfo);
@@ -274,24 +357,9 @@ inputTypeDefinitions.forEach(inputTypeDefinition => {
                     }
 
                     if (ts.isConstructSignatureDeclaration(member) && member.type) {
-                        const parameters: ParameterInfo[] = [];
-
-                        member.parameters.forEach(parameter => {
-                            if (!ts.isIdentifier(parameter.name) || !parameter.type) {
-                                return;
-                            }
-
-                            parameters.push({
-                                name: parameter.name.text,
-                                isOptional: isParameterOptional(parameter),
-                                type: extractTypeInfo(parameter.type),
-                            });
-                        });
-
-
                         constructors.push({
                             returnType: extractTypeInfo(member.type),
-                            parameters: parameters,
+                            parameters: extractParameters(member.parameters),
                         });
 
                         return;
