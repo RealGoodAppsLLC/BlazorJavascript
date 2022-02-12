@@ -46,16 +46,27 @@ interface NumberLiteralInfo {
     value: number;
 }
 
+interface TypeInfo {
+    union: UnionTypeInfo | null;
+    intersection: IntersectionTypeInfo | null;
+    parenthesized: TypeInfo | null;
+    single: SingleTypeInfo | null;
+}
+
+interface UnionTypeInfo {
+    types: TypeInfo[];
+}
+
+interface IntersectionTypeInfo {
+    types: TypeInfo[];
+}
+
 interface SingleTypeInfo {
     name: string | null;
     stringLiteral: StringLiteralInfo | null;
     booleanLiteral: BooleanLiteralInfo | null;
     numberLiteral: NumberLiteralInfo | null;
     typeArguments: TypeInfo[];
-}
-
-interface TypeInfo {
-    list: SingleTypeInfo[];
 }
 
 interface GlobalVariableInfo {
@@ -262,19 +273,53 @@ function extractSingleTypeInfo(typeNode: ts.TypeNode): SingleTypeInfo {
 
 function extractTypeInfo(typeNode: ts.TypeNode): TypeInfo {
     if (ts.isUnionTypeNode(typeNode)) {
-        const singleTypeInfoList: SingleTypeInfo[] = [];
+        const unionTypes: TypeInfo[] = [];
 
-        typeNode.types.forEach(unionTypeChild => {
-            singleTypeInfoList.push(extractSingleTypeInfo(unionTypeChild));
+        typeNode.types.forEach(unionChild => {
+            unionTypes.push(extractTypeInfo(unionChild));
         });
 
         return {
-            list: singleTypeInfoList,
+            union: {
+                types: unionTypes,
+            },
+            intersection: null,
+            parenthesized: null,
+            single: null,
+        }
+    }
+
+    if (ts.isIntersectionTypeNode(typeNode)) {
+        const intersectionTypes: TypeInfo[] = [];
+
+        typeNode.types.forEach(intersectionChild => {
+            intersectionTypes.push(extractTypeInfo(intersectionChild));
+        });
+
+        return {
+            union: null,
+            intersection: {
+                types: intersectionTypes,
+            },
+            parenthesized: null,
+            single: null,
+        }
+    }
+
+    if (ts.isParenthesizedTypeNode(typeNode)) {
+        return {
+            union: null,
+            intersection: null,
+            parenthesized: extractTypeInfo(typeNode.type),
+            single: null,
         }
     }
 
     return {
-        list: [extractSingleTypeInfo(typeNode)],
+        union: null,
+        intersection: null,
+        parenthesized: null,
+        single: extractSingleTypeInfo(typeNode)
     };
 }
 
