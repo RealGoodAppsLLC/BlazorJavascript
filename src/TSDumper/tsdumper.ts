@@ -71,6 +71,7 @@ interface MethodInfo {
 
 interface InterfaceInfo {
     name: string;
+    typeParameters: TypeParameter[];
     extendsList: string[];
     properties: PropertyInfo[];
     methods: MethodInfo[];
@@ -79,6 +80,11 @@ interface InterfaceInfo {
 interface ParsedInfo {
     globalVariables: GlobalVariableInfo[];
     interfaces: InterfaceInfo[];
+}
+
+interface ExtractTypeParametersResult {
+    typeParameters: TypeParameter[];
+    anyConstraintsAreNotSimple: boolean;
 }
 
 function extractTypeArguments(typeNode: ts.TypeReferenceNode): SingleTypeInfo[] {
@@ -225,6 +231,53 @@ function extractParameters(member: ts.NodeArray<ts.ParameterDeclaration>): Param
     return parameters;
 }
 
+function extractTypeParameters(typeParameterDeclarations: ts.NodeArray<ts.TypeParameterDeclaration> | null | undefined): ExtractTypeParametersResult {
+    const typeParameters: TypeParameter[] = [];
+
+    if (!typeParameterDeclarations) {
+        return {
+            typeParameters: typeParameters,
+            anyConstraintsAreNotSimple: false,
+        };
+    }
+
+    // FIXME: Any function that has something like this is ignored for now:
+    //        foo<K extends keyof Bar>(type: K)
+    //        In the future, we should consider replacing the generic and parameters with a string.
+    let anyConstraintsAreNotSimple = false;
+
+    if (!!typeParameterDeclarations) {
+        typeParameterDeclarations.forEach(typeParameter => {
+            if (!ts.isIdentifier(typeParameter.name)) {
+                return;
+            }
+
+            // FIXME: For now, we are ignoring defaults for type parameters.
+            //        We might be able to emulate this with subclassing: https://stackoverflow.com/a/707788.
+            let constraint: TypeInfo | null = null;
+
+            if (!!typeParameter.constraint) {
+                if (ts.isTypeOperatorNode(typeParameter.constraint)) {
+                    anyConstraintsAreNotSimple = true;
+                    return;
+                }
+
+                constraint = extractTypeInfo(typeParameter.constraint);
+            }
+
+            typeParameters.push({
+                name: typeParameter.name.text,
+                constraint: constraint,
+            });
+        });
+    }
+
+    return {
+        typeParameters: typeParameters,
+        anyConstraintsAreNotSimple: anyConstraintsAreNotSimple,
+    }
+}
+
 inputTypeDefinitions.forEach(inputTypeDefinition => {
     const inputPath = `node_modules/typescript/lib/${inputTypeDefinition}.ts`;
     const outputPath = `output/${inputTypeDefinition}.json`;
@@ -275,53 +328,30 @@ inputTypeDefinitions.forEach(inputTypeDefinition => {
                     return;
                 }
 
-                const typeParameters: TypeParameter[] = [];
-                let anyConstraintsAreNotSimple = false;
+                const typeParametersResult = extractTypeParameters(member.typeParameters);
 
-                if (!!member.typeParameters) {
-                    member.typeParameters.forEach(typeParameter => {
-                        if (!ts.isIdentifier(typeParameter.name)) {
-                            return;
-                        }
-
-                        // FIXME: For now, we are ignoring defaults for type parameters.
-                        //        We might be able to emulate this with subclassing: https://stackoverflow.com/a/707788.
-                        let constraint: TypeInfo | null = null;
-
-                        if (!!typeParameter.constraint) {
-                            if (!ts.isTypeReferenceNode(typeParameter.constraint)) {
-                                anyConstraintsAreNotSimple = true;
-                                return;
-                            }
-
-                            constraint = extractTypeInfo(typeParameter.constraint);
-                        }
-
-                        typeParameters.push({
-                            name: typeParameter.name.text,
-                            constraint: constraint,
-                        });
-                    });
-                }
-
-                // FIXME: Any function that has something like this is ignored for now:
-                //        foo<K extends keyof Bar>(type: K)
-                //        In the future, we should consider replacing the generic and parameters with a string.
-                if (anyConstraintsAreNotSimple) {
+                if (typeParametersResult.anyConstraintsAreNotSimple) {
                     return;
                 }
 
                 methods.push({
                     name: member.name.text,
                     parameters: extractParameters(member.parameters),
-                    typeParameters: typeParameters,
+                    typeParameters: typeParametersResult.typeParameters,
                     returnType: extractTypeInfo(member.type),
                 });
             });
 
+            const typeParametersResult = extractTypeParameters(statement.typeParameters);
+
+            if (typeParametersResult.anyConstraintsAreNotSimple) {
+                return;
+            }
+
             const interfaceInfo: InterfaceInfo = {
                 name: statement.name.text,
                 extendsList: extendsList,
+                typeParameters: typeParametersResult.typeParameters,
                 properties: extractProperties(statement.members),
                 methods: methods,
             };
