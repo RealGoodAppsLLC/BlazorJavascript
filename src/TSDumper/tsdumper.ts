@@ -14,6 +14,8 @@ const inputTypeDefinitions = [
     'lib.dom.d',
 ];
 
+const isPrettyPrint = process.argv.indexOf('--pretty') !== -1;
+
 const getCircularReplacer = () => {
     const seen = new WeakSet();
     return (key: any, value: any) => {
@@ -113,5 +115,5 @@ inputTypeDefinitions.forEach(inputTypeDefinition => {
         }
     });
 
-    fs.writeFileSync(outputPath, JSON.stringify(parsedInfo, getCircularReplacer()));
+    fs.writeFileSync(outputPath, JSON.stringify(parsedInfo, getCircularReplacer(), isPrettyPrint ? 2 : undefined));
 });
