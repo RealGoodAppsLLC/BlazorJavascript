@@ -1,0 +1,61 @@
+import * as ts from "typescript";
+import { extractTypeInfo, TypeInfo } from "./types";
+
+export interface TypeParameter {
+    name: string;
+    constraint: TypeInfo | null;
+}
+
+export interface ExtractTypeParametersResult {
+    typeParameters: TypeParameter[];
+    anyConstraintsAreNotSimple: boolean;
+}
+
+export const extractTypeParameters = (
+    typeParameterDeclarations: ts.NodeArray<ts.TypeParameterDeclaration> | null | undefined
+): ExtractTypeParametersResult => {
+    const typeParameters: TypeParameter[] = [];
+
+    if (!typeParameterDeclarations) {
+        return {
+            typeParameters: typeParameters,
+            anyConstraintsAreNotSimple: false,
+        };
+    }
+
+    // FIXME: Any function that has something like this is ignored for now:
+    //        foo<K extends keyof Bar>(type: K)
+    //        In the future, we should consider replacing the generic and parameters with a string.
+    let anyConstraintsAreNotSimple = false;
+
+    if (!!typeParameterDeclarations) {
+        typeParameterDeclarations.forEach(typeParameter => {
+            if (!ts.isIdentifier(typeParameter.name)) {
+                return;
+            }
+
+            // FIXME: For now, we are ignoring defaults for type parameters.
+            //        We might be able to emulate this with subclassing: https://stackoverflow.com/a/707788.
+            let constraint: TypeInfo | null = null;
+
+            if (!!typeParameter.constraint) {
+                if (ts.isTypeOperatorNode(typeParameter.constraint)) {
+                    anyConstraintsAreNotSimple = true;
+                    return;
+                }
+
+                constraint = extractTypeInfo(typeParameter.constraint);
+            }
+
+            typeParameters.push({
+                name: typeParameter.name.text,
+                constraint: constraint,
+            });
+        });
+    }
+
+    return {
+        typeParameters: typeParameters,
+        anyConstraintsAreNotSimple: anyConstraintsAreNotSimple,
+    };
+};
