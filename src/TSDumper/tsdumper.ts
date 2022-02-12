@@ -43,11 +43,19 @@ interface GlobalVariableInfo {
     name: string;
     hasPrototype: boolean;
     constructors: ConstructorInfo[];
+    properties: PropertyInfo[];
+}
+
+interface PropertyInfo {
+    name: string;
+    isReadonly: boolean;
+    type: TypeInfo;
 }
 
 interface InterfaceInfo {
     name: string;
-    extendsList: string[]
+    extendsList: string[];
+    properties: PropertyInfo[];
 }
 
 interface ParsedInfo {
@@ -112,6 +120,40 @@ function isParameterOptional(parameterDeclaration: ts.ParameterDeclaration): boo
         && parameterDeclaration.questionToken.kind == SyntaxKind.QuestionToken
 }
 
+function extractProperties(members: ts.NodeArray<ts.TypeElement>) {
+    const properties: PropertyInfo[] = [];
+
+    members.forEach(member => {
+        if (!ts.isPropertySignature(member) || !ts.isIdentifier(member.name) || !member.type) {
+            return;
+        }
+
+        // FIXME: Ignore properties that are named "prototype" to make our life easier.
+        //        There might be a better way to do this.
+        if (member.name.text === "prototype") {
+            return;
+        }
+
+        let isReadonly = false;
+
+        if (!!member.modifiers) {
+            member.modifiers.forEach(modifier => {
+                if (modifier.kind === SyntaxKind.ReadonlyKeyword) {
+                    isReadonly = true;
+                }
+            });
+        }
+
+        properties.push({
+            name: member.name.text,
+            type: extractTypeInfo(member.type),
+            isReadonly: isReadonly,
+        });
+    });
+
+    return properties;
+}
+
 inputTypeDefinitions.forEach(inputTypeDefinition => {
     const inputPath = `node_modules/typescript/lib/${inputTypeDefinition}.ts`;
     const outputPath = `output/${inputTypeDefinition}.json`;
@@ -158,6 +200,7 @@ inputTypeDefinitions.forEach(inputTypeDefinition => {
             const interfaceInfo: InterfaceInfo = {
                 name: statement.name.text,
                 extendsList: extendsList,
+                properties: extractProperties(statement.members),
             };
 
             parsedInfo.interfaces.push(interfaceInfo);
@@ -219,6 +262,7 @@ inputTypeDefinitions.forEach(inputTypeDefinition => {
                     name: declarationName,
                     hasPrototype: hasPrototype,
                     constructors: constructors,
+                    properties: extractProperties(declaration.type.members),
                 });
             });
         }
