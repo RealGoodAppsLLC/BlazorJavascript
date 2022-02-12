@@ -7,6 +7,7 @@ const inputTypeDefinitions = [
 ];
 
 const isPrettyPrint = process.argv.indexOf('--pretty') !== -1;
+const isDebugMode = process.argv.indexOf('--debug') !== -1;
 
 const getCircularReplacer = () => {
     const seen = new WeakSet();
@@ -46,7 +47,6 @@ interface GlobalVariableInfo {
 
 interface ParsedInfo {
     globalVariables: GlobalVariableInfo[];
-    raw: any;
 }
 
 function extractTypeName(typeNode: ts.TypeNode): string {
@@ -120,8 +120,11 @@ inputTypeDefinitions.forEach(inputTypeDefinition => {
 
     const parsedInfo: ParsedInfo = {
         globalVariables: [],
-        raw: sourceFile,
     };
+
+    if (isDebugMode) {
+        (parsedInfo as any).raw = sourceFile;
+    }
 
     sourceFile.statements.forEach(statement => {
         if (ts.isInterfaceDeclaration(statement)) {
