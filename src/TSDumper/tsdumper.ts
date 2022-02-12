@@ -68,10 +68,11 @@ interface SingleTypeInfo {
     booleanLiteral: BooleanLiteralInfo | null;
     numberLiteral: NumberLiteralInfo | null;
     typeArguments: TypeInfo[];
+    isUnhandled: boolean;
 }
 
 interface FunctionTypeInfo {
-    typeParameters: ExtractTypeParametersResult;
+    extractTypeParametersResult: ExtractTypeParametersResult;
     parameters: ParameterInfo[];
     returnType: TypeInfo;
 }
@@ -96,14 +97,14 @@ interface TypeParameter {
 
 interface MethodInfo {
     name: string;
-    typeParameters: ExtractTypeParametersResult;
+    extractTypeParametersResult: ExtractTypeParametersResult;
     returnType: TypeInfo;
     parameters: ParameterInfo[];
 }
 
 interface InterfaceInfo {
     name: string;
-    typeParameters: ExtractTypeParametersResult;
+    extractTypeParametersResult: ExtractTypeParametersResult;
     extendsList: string[];
     properties: PropertyInfo[];
     methods: MethodInfo[];
@@ -138,7 +139,8 @@ function extractSingleTypeInfo(typeNode: ts.TypeNode): SingleTypeInfo {
             stringLiteral: null,
             booleanLiteral: null,
             numberLiteral: null,
-            typeArguments: extractTypeArguments(typeNode)
+            typeArguments: extractTypeArguments(typeNode),
+            isUnhandled: false,
         };
     }
 
@@ -149,7 +151,8 @@ function extractSingleTypeInfo(typeNode: ts.TypeNode): SingleTypeInfo {
             stringLiteral: null,
             booleanLiteral: null,
             numberLiteral: null,
-            typeArguments: []
+            typeArguments: [],
+            isUnhandled: false,
         };
     }
 
@@ -159,7 +162,8 @@ function extractSingleTypeInfo(typeNode: ts.TypeNode): SingleTypeInfo {
             stringLiteral: null,
             booleanLiteral: null,
             numberLiteral: null,
-            typeArguments: []
+            typeArguments: [],
+            isUnhandled: false,
         };
     }
 
@@ -169,7 +173,8 @@ function extractSingleTypeInfo(typeNode: ts.TypeNode): SingleTypeInfo {
             stringLiteral: null,
             booleanLiteral: null,
             numberLiteral: null,
-            typeArguments: []
+            typeArguments: [],
+            isUnhandled: false,
         };
     }
 
@@ -179,7 +184,8 @@ function extractSingleTypeInfo(typeNode: ts.TypeNode): SingleTypeInfo {
             stringLiteral: null,
             booleanLiteral: null,
             numberLiteral: null,
-            typeArguments: []
+            typeArguments: [],
+            isUnhandled: false,
         };
     }
 
@@ -189,7 +195,8 @@ function extractSingleTypeInfo(typeNode: ts.TypeNode): SingleTypeInfo {
             stringLiteral: null,
             booleanLiteral: null,
             numberLiteral: null,
-            typeArguments: []
+            typeArguments: [],
+            isUnhandled: false,
         };
     }
 
@@ -199,7 +206,8 @@ function extractSingleTypeInfo(typeNode: ts.TypeNode): SingleTypeInfo {
             stringLiteral: null,
             booleanLiteral: null,
             numberLiteral: null,
-            typeArguments: []
+            typeArguments: [],
+            isUnhandled: false,
         };
     }
 
@@ -209,7 +217,8 @@ function extractSingleTypeInfo(typeNode: ts.TypeNode): SingleTypeInfo {
             stringLiteral: null,
             booleanLiteral: null,
             numberLiteral: null,
-            typeArguments: []
+            typeArguments: [],
+            isUnhandled: false,
         };
     }
 
@@ -220,7 +229,8 @@ function extractSingleTypeInfo(typeNode: ts.TypeNode): SingleTypeInfo {
                 stringLiteral: null,
                 booleanLiteral: null,
                 numberLiteral: null,
-                typeArguments: []
+                typeArguments: [],
+                isUnhandled: false,
             };
         }
 
@@ -232,7 +242,8 @@ function extractSingleTypeInfo(typeNode: ts.TypeNode): SingleTypeInfo {
                     value: true,
                 },
                 numberLiteral: null,
-                typeArguments: []
+                typeArguments: [],
+                isUnhandled: false,
             };
         }
 
@@ -244,7 +255,8 @@ function extractSingleTypeInfo(typeNode: ts.TypeNode): SingleTypeInfo {
                     value: false,
                 },
                 numberLiteral: null,
-                typeArguments: []
+                typeArguments: [],
+                isUnhandled: false,
             };
         }
 
@@ -256,7 +268,8 @@ function extractSingleTypeInfo(typeNode: ts.TypeNode): SingleTypeInfo {
                 },
                 booleanLiteral: null,
                 numberLiteral: null,
-                typeArguments: []
+                typeArguments: [],
+                isUnhandled: false,
             };
         }
 
@@ -265,7 +278,8 @@ function extractSingleTypeInfo(typeNode: ts.TypeNode): SingleTypeInfo {
             stringLiteral: null,
             booleanLiteral: null,
             numberLiteral: null,
-            typeArguments: []
+            typeArguments: [],
+            isUnhandled: true,
         };
     }
 
@@ -274,7 +288,8 @@ function extractSingleTypeInfo(typeNode: ts.TypeNode): SingleTypeInfo {
         stringLiteral: null,
         booleanLiteral: null,
         numberLiteral: null,
-        typeArguments: []
+        typeArguments: [],
+        isUnhandled: true,
     };
 }
 
@@ -333,7 +348,7 @@ function extractTypeInfo(typeNode: ts.TypeNode): TypeInfo {
             single: null,
             function: {
                 parameters: extractParameters(typeNode.parameters),
-                typeParameters: extractTypeParameters(typeNode.typeParameters),
+                extractTypeParametersResult: extractTypeParameters(typeNode.typeParameters),
                 returnType: extractTypeInfo(typeNode.type)
             },
         }
@@ -452,6 +467,155 @@ function extractTypeParameters(typeParameterDeclarations: ts.NodeArray<ts.TypePa
     }
 }
 
+function recursiveCheckForNonSimpleTypeArgument(result: TypeInfo): boolean {
+    let anyNodeNotSimple = false;
+
+    if (result.single !== null) {
+        result.single.typeArguments.every(typeArgument => {
+            if (recursiveCheckForNonSimpleTypeArgument(typeArgument)) {
+                anyNodeNotSimple = true;
+                return false;
+            }
+
+            return true;
+        });
+    }
+
+    if (result.union !== null) {
+        result.union.types.every(unionTypeChild => {
+            if (recursiveCheckForNonSimpleTypeArgument(unionTypeChild)) {
+                anyNodeNotSimple = true;
+                return false;
+            }
+
+            return true;
+        });
+    }
+
+    if (result.intersection !== null) {
+        result.intersection.types.every(intersectionTypeChild => {
+            if (recursiveCheckForNonSimpleTypeArgument(intersectionTypeChild)) {
+                anyNodeNotSimple = true;
+                return false;
+            }
+
+            return true;
+        });
+    }
+
+    if (result.function !== null) {
+        if (result.function.extractTypeParametersResult.anyConstraintsAreNotSimple
+            || recursiveCheckForNonSimpleTypeArgument(result.function.returnType)) {
+            anyNodeNotSimple = true;
+        }
+        else {
+            result.function.parameters.every(parameterInfo => {
+                if (recursiveCheckForNonSimpleTypeArgument(parameterInfo.type)) {
+                    anyNodeNotSimple = true;
+                    return false;
+                }
+
+                return true;
+            });
+        }
+    }
+
+    return anyNodeNotSimple;
+}
+
+function postProcessParsedInfo(parsedInfo: ParsedInfo): ParsedInfo {
+    let postProcessedGlobalVariables: GlobalVariableInfo[] = [];
+    let postProcessedInterfaces: InterfaceInfo[] = [];
+
+    parsedInfo.globalVariables.forEach(globalVariable => {
+        const postProcessedConstructors: ConstructorInfo[] = [];
+        const postProcessedProperties: PropertyInfo[] = [];
+
+        globalVariable.constructors.forEach(constructor => {
+            let keepConstructor = true;
+
+            constructor.parameters.forEach(constructorParameter => {
+                if (recursiveCheckForNonSimpleTypeArgument(constructorParameter.type)) {
+                    keepConstructor = false;
+                }
+            });
+
+            if (keepConstructor) {
+                postProcessedConstructors.push(constructor);
+            }
+        });
+
+        globalVariable.properties.forEach(property => {
+            if (recursiveCheckForNonSimpleTypeArgument(property.type)) {
+                return;
+            }
+
+            postProcessedProperties.push(property);
+        });
+
+        const postProcessedGlobalVariable: GlobalVariableInfo = {
+            name: globalVariable.name,
+            hasPrototype: globalVariable.hasPrototype,
+            constructors: postProcessedConstructors,
+            properties: postProcessedProperties,
+        };
+
+        postProcessedGlobalVariables.push(postProcessedGlobalVariable);
+    });
+
+    parsedInfo.interfaces.forEach(interfaceInfo => {
+        if (interfaceInfo.extractTypeParametersResult.anyConstraintsAreNotSimple) {
+            return;
+        }
+
+        const postProcessedMethods: MethodInfo[] = [];
+        const postProcessedProperties: PropertyInfo[] = [];
+
+        interfaceInfo.methods.forEach(methodInfo => {
+            let keepMethod = true;
+
+            if (methodInfo.extractTypeParametersResult.anyConstraintsAreNotSimple) {
+                keepMethod = false;
+            }
+            else if (recursiveCheckForNonSimpleTypeArgument(methodInfo.returnType)) {
+                keepMethod = false;
+            }
+            else {
+                methodInfo.parameters.forEach(parameterInfo => {
+                    if (recursiveCheckForNonSimpleTypeArgument(parameterInfo.type)) {
+                        keepMethod = false;
+                    }
+                });
+            }
+
+            if (keepMethod) {
+                postProcessedMethods.push(methodInfo);
+            }
+        });
+
+        interfaceInfo.properties.forEach(property => {
+            if (recursiveCheckForNonSimpleTypeArgument(property.type)) {
+                return;
+            }
+
+            postProcessedProperties.push(property);
+        });
+
+        postProcessedInterfaces.push({
+            name: interfaceInfo.name,
+            methods: postProcessedMethods,
+            extractTypeParametersResult: interfaceInfo.extractTypeParametersResult,
+            extendsList: interfaceInfo.extendsList,
+            properties: postProcessedProperties,
+        });
+    });
+
+    return {
+        globalVariables: postProcessedGlobalVariables,
+        interfaces: postProcessedInterfaces,
+    };
+}
+
 inputTypeDefinitions.forEach(inputTypeDefinition => {
     const inputPath = `node_modules/typescript/lib/${inputTypeDefinition}.ts`;
     const outputPath = `output/${inputTypeDefinition}.json`;
@@ -468,10 +632,6 @@ inputTypeDefinitions.forEach(inputTypeDefinition => {
         globalVariables: [],
         interfaces: [],
     };
-
-    if (isDebugMode) {
-        (parsedInfo as any).raw = sourceFile;
-    }
 
     sourceFile.statements.forEach(statement => {
         if (ts.isInterfaceDeclaration(statement)
@@ -505,7 +665,7 @@ inputTypeDefinitions.forEach(inputTypeDefinition => {
                 methods.push({
                     name: member.name.text,
                     parameters: extractParameters(member.parameters),
-                    typeParameters: extractTypeParameters(member.typeParameters),
+                    extractTypeParametersResult: extractTypeParameters(member.typeParameters),
                     returnType: extractTypeInfo(member.type),
                 });
             });
@@ -513,7 +673,7 @@ inputTypeDefinitions.forEach(inputTypeDefinition => {
             const interfaceInfo: InterfaceInfo = {
                 name: statement.name.text,
                 extendsList: extendsList,
-                typeParameters: extractTypeParameters(statement.typeParameters),
+                extractTypeParametersResult: extractTypeParameters(statement.typeParameters),
                 properties: extractProperties(statement.members),
                 methods: methods,
             };
@@ -568,5 +728,11 @@ inputTypeDefinitions.forEach(inputTypeDefinition => {
         }
     });
 
-    fs.writeFileSync(outputPath, JSON.stringify(parsedInfo, getCircularReplacer(), isPrettyPrint ? 2 : undefined));
+    const postProcessedInfo = postProcessParsedInfo(parsedInfo);
+
+    if (isDebugMode) {
+        (postProcessedInfo as any).raw = sourceFile;
+    }
+
+    fs.writeFileSync(outputPath, JSON.stringify(postProcessedInfo, getCircularReplacer(), isPrettyPrint ? 2 : undefined));
 });
