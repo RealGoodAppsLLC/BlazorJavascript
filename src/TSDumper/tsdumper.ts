@@ -1,6 +1,5 @@
 import * as fs from "fs";
 import * as ts from "typescript";
-import {SourceFile, SyntaxKind} from "typescript";
 
 const inputTypeDefinitions = [
     'lib.dom.d',
@@ -37,7 +36,7 @@ interface ParameterInfo {
 
 interface SingleTypeInfo {
     name: string;
-    typeArguments: SingleTypeInfo[];
+    typeArguments: TypeInfo[];
 }
 
 interface TypeInfo {
@@ -87,12 +86,12 @@ interface ExtractTypeParametersResult {
     anyConstraintsAreNotSimple: boolean;
 }
 
-function extractTypeArguments(typeNode: ts.TypeReferenceNode): SingleTypeInfo[] {
-    const typeArguments: SingleTypeInfo[] = [];
+function extractTypeArguments(typeNode: ts.TypeReferenceNode): TypeInfo[] {
+    const typeArguments: TypeInfo[] = [];
 
     if (!!typeNode.typeArguments) {
         typeNode.typeArguments.forEach(typeArgument => {
-            typeArguments.push(extractSingleTypeInfo(typeArgument));
+            typeArguments.push(extractTypeInfo(typeArgument));
         });
     }
 
