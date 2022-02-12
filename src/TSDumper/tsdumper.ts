@@ -1,14 +1,6 @@
 import * as fs from "fs";
-import {
-    Block,
-    InterfaceDeclaration,
-    isTypeReferenceNode,
-    SourceFile,
-    SyntaxKind,
-    VariableDeclaration,
-    VariableStatement
-} from "typescript";
 import * as ts from "typescript";
+import {SourceFile, SyntaxKind} from "typescript";
 
 const inputTypeDefinitions = [
     'lib.dom.d',
@@ -32,17 +24,86 @@ const getCircularReplacer = () => {
 fs.mkdirSync('output', {recursive: true});
 
 interface ConstructorInfo {
-    returnType: string;
+    returnType: TypeInfo;
+    parameters: ParameterInfo[];
 }
 
-interface ClassInfo {
+interface ParameterInfo {
     name: string;
+    isOptional: boolean;
+    type: TypeInfo;
+}
+
+interface TypeInfo {
+    names: string[];
+}
+
+interface GlobalVariableInfo {
+    name: string;
+    hasPrototype: boolean;
     constructors: ConstructorInfo[];
 }
 
 interface ParsedInfo {
-    classes: ClassInfo[];
+    globalVariables: GlobalVariableInfo[];
     raw: any;
+}
+
+function extractTypeName(typeNode: ts.TypeNode): string {
+    if (ts.isTypeReferenceNode(typeNode)
+        && ts.isIdentifier(typeNode.typeName)) {
+        return typeNode.typeName.text;
+    }
+
+    if (ts.isArrayTypeNode(typeNode)) {
+        const typeName = extractTypeName(typeNode.elementType);
+        return `${typeName}[]`;
+    }
+
+    if (typeNode.kind === SyntaxKind.NumberKeyword) {
+        return "number";
+    }
+
+    if (typeNode.kind === SyntaxKind.StringKeyword) {
+        return "string";
+    }
+
+    if (typeNode.kind === SyntaxKind.BooleanKeyword) {
+        return "boolean";
+    }
+
+    if (ts.isLiteralTypeNode(typeNode)) {
+        if (typeNode.literal.kind == SyntaxKind.NullKeyword) {
+            return "null";
+        }
+
+        return "unhandled_literal"
+    }
+
+    return "unhandled";
+}
+
+function extractTypeInfo(typeNode: ts.TypeNode): TypeInfo {
+    if (ts.isUnionTypeNode(typeNode)) {
+        const typeNames: string[] = [];
+
+        typeNode.types.forEach(unionTypeChild => {
+            typeNames.push(extractTypeName(unionTypeChild));
+        });
+
+        return {
+            names: typeNames,
+        }
+    }
+
+    return {
+        names: [extractTypeName(typeNode)],
+    };
+}
+
+function isParameterOptional(parameterDeclaration: ts.ParameterDeclaration): boolean {
+    return !!parameterDeclaration.questionToken
+        && parameterDeclaration.questionToken.kind == SyntaxKind.QuestionToken
 }
 
 inputTypeDefinitions.forEach(inputTypeDefinition => {
@@ -58,7 +119,7 @@ inputTypeDefinitions.forEach(inputTypeDefinition => {
     );
 
     const parsedInfo: ParsedInfo = {
-        classes: [],
+        globalVariables: [],
         raw: sourceFile,
     };
 
@@ -93,24 +154,36 @@ inputTypeDefinitions.forEach(inputTypeDefinition => {
                         return;
                     }
 
-                    if (ts.isConstructSignatureDeclaration(member)
-                        && member.type
-                        && ts.isTypeReferenceNode(member.type)
-                        && ts.isIdentifier(member.type.typeName)) {
+                    if (ts.isConstructSignatureDeclaration(member) && member.type) {
+                        const parameters: ParameterInfo[] = [];
+
+                        member.parameters.forEach(parameter => {
+                            if (!ts.isIdentifier(parameter.name) || !parameter.type) {
+                                return;
+                            }
+
+                            parameters.push({
+                                name: parameter.name.text,
+                                isOptional: isParameterOptional(parameter),
+                                type: extractTypeInfo(parameter.type),
+                            });
+                        });
+
+
                         constructors.push({
-                            returnType: member.type.typeName.text,
+                            returnType: extractTypeInfo(member.type),
+                            parameters: parameters,
                         });
 
                         return;
                     }
                 });
 
-                if (hasPrototype) {
-                    parsedInfo.classes.push({
-                        name: declarationName,
-                        constructors: constructors,
-                    });
-                }
+                parsedInfo.globalVariables.push({
+                    name: declarationName,
+                    hasPrototype: hasPrototype,
+                    constructors: constructors,
+                });
             });
         }
     });
