@@ -34,8 +34,23 @@ interface ParameterInfo {
     type: TypeInfo;
 }
 
+interface StringLiteralInfo {
+    value: string;
+}
+
+interface BooleanLiteralInfo {
+    value: boolean;
+}
+
+interface NumberLiteralInfo {
+    value: number;
+}
+
 interface SingleTypeInfo {
-    name: string;
+    name: string | null;
+    stringLiteral: StringLiteralInfo | null;
+    booleanLiteral: BooleanLiteralInfo | null;
+    numberLiteral: NumberLiteralInfo | null;
     typeArguments: TypeInfo[];
 }
 
@@ -102,6 +117,9 @@ function extractSingleTypeInfo(typeNode: ts.TypeNode): SingleTypeInfo {
         && ts.isIdentifier(typeNode.typeName)) {
         return {
             name: typeNode.typeName.text,
+            stringLiteral: null,
+            booleanLiteral: null,
+            numberLiteral: null,
             typeArguments: extractTypeArguments(typeNode)
         };
     }
@@ -110,6 +128,9 @@ function extractSingleTypeInfo(typeNode: ts.TypeNode): SingleTypeInfo {
         const typeName = extractSingleTypeInfo(typeNode.elementType);
         return {
             name: `${typeName}[]`,
+            stringLiteral: null,
+            booleanLiteral: null,
+            numberLiteral: null,
             typeArguments: []
         };
     }
@@ -117,6 +138,9 @@ function extractSingleTypeInfo(typeNode: ts.TypeNode): SingleTypeInfo {
     if (typeNode.kind === ts.SyntaxKind.NumberKeyword) {
         return {
             name: "number",
+            stringLiteral: null,
+            booleanLiteral: null,
+            numberLiteral: null,
             typeArguments: []
         };
     }
@@ -124,6 +148,9 @@ function extractSingleTypeInfo(typeNode: ts.TypeNode): SingleTypeInfo {
     if (typeNode.kind === ts.SyntaxKind.StringKeyword) {
         return {
             name: "string",
+            stringLiteral: null,
+            booleanLiteral: null,
+            numberLiteral: null,
             typeArguments: []
         };
     }
@@ -131,26 +158,104 @@ function extractSingleTypeInfo(typeNode: ts.TypeNode): SingleTypeInfo {
     if (typeNode.kind === ts.SyntaxKind.BooleanKeyword) {
         return {
             name: "boolean",
+            stringLiteral: null,
+            booleanLiteral: null,
+            numberLiteral: null,
+            typeArguments: []
+        };
+    }
+
+    if (typeNode.kind === ts.SyntaxKind.AnyKeyword) {
+        return {
+            name: "any",
+            stringLiteral: null,
+            booleanLiteral: null,
+            numberLiteral: null,
+            typeArguments: []
+        };
+    }
+
+    if (typeNode.kind === ts.SyntaxKind.UndefinedKeyword) {
+        return {
+            name: "undefined",
+            stringLiteral: null,
+            booleanLiteral: null,
+            numberLiteral: null,
+            typeArguments: []
+        };
+    }
+
+    if (typeNode.kind === ts.SyntaxKind.VoidKeyword) {
+        return {
+            name: "void",
+            stringLiteral: null,
+            booleanLiteral: null,
+            numberLiteral: null,
             typeArguments: []
         };
     }
 
     if (ts.isLiteralTypeNode(typeNode)) {
-        if (typeNode.literal.kind == ts.SyntaxKind.NullKeyword) {
+        if (typeNode.literal.kind === ts.SyntaxKind.NullKeyword) {
             return {
                 name: "null",
+                stringLiteral: null,
+                booleanLiteral: null,
+                numberLiteral: null,
+                typeArguments: []
+            };
+        }
+
+        if (typeNode.literal.kind === ts.SyntaxKind.TrueKeyword) {
+            return {
+                name: null,
+                stringLiteral: null,
+                booleanLiteral: {
+                    value: true,
+                },
+                numberLiteral: null,
+                typeArguments: []
+            };
+        }
+
+        if (typeNode.literal.kind === ts.SyntaxKind.FalseKeyword) {
+            return {
+                name: null,
+                stringLiteral: null,
+                booleanLiteral: {
+                    value: false,
+                },
+                numberLiteral: null,
+                typeArguments: []
+            };
+        }
+
+        if (ts.isStringLiteral(typeNode.literal)) {
+            return {
+                name: null,
+                stringLiteral: {
+                    value: typeNode.literal.text,
+                },
+                booleanLiteral: null,
+                numberLiteral: null,
                 typeArguments: []
             };
         }
 
         return {
-            name: "unhandled_literal",
+            name: `unhandled_literal:${typeNode.literal.kind}`,
+            stringLiteral: null,
+            booleanLiteral: null,
+            numberLiteral: null,
             typeArguments: []
         };
     }
 
     return {
-        name: "unhandled",
+        name: `unhandled:${typeNode.kind}`,
+        stringLiteral: null,
+        booleanLiteral: null,
+        numberLiteral: null,
         typeArguments: []
     };
 }
