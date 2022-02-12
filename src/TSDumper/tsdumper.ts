@@ -29,8 +29,13 @@ const getCircularReplacer = () => {
 
 fs.mkdirSync('output', {recursive: true});
 
+interface ConstructorInfo {
+    returnType: string;
+}
+
 interface ClassInfo {
     name: string;
+    constructors: ConstructorInfo[];
 }
 
 interface ParsedInfo {
@@ -57,7 +62,6 @@ inputTypeDefinitions.forEach(inputTypeDefinition => {
 
     sourceFile.statements.forEach(statement => {
         if (ts.isInterfaceDeclaration(statement)) {
-            console.log(`interface decl: ${statement.name.text}`);
             return;
         }
 
@@ -73,6 +77,7 @@ inputTypeDefinitions.forEach(inputTypeDefinition => {
                 let hasPrototype = false;
 
                 const declarationName = declaration.name.text;
+                const constructors: ConstructorInfo[] = [];
 
                 declaration.type.members.forEach(member => {
                     if (ts.isPropertySignature(member)
@@ -85,11 +90,23 @@ inputTypeDefinitions.forEach(inputTypeDefinition => {
                         hasPrototype = true;
                         return;
                     }
+
+                    if (ts.isConstructSignatureDeclaration(member)
+                        && member.type
+                        && ts.isTypeReferenceNode(member.type)
+                        && ts.isIdentifier(member.type.typeName)) {
+                        constructors.push({
+                            returnType: member.type.typeName.text,
+                        });
+
+                        return;
+                    }
                 });
 
                 if (hasPrototype) {
                     parsedInfo.classes.push({
                         name: declarationName,
+                        constructors: constructors,
                     });
                 }
             });
