@@ -51,6 +51,7 @@ interface TypeInfo {
     intersection: IntersectionTypeInfo | null;
     parenthesized: TypeInfo | null;
     single: SingleTypeInfo | null;
+    function: FunctionTypeInfo | null;
 }
 
 interface UnionTypeInfo {
@@ -67,6 +68,12 @@ interface SingleTypeInfo {
     booleanLiteral: BooleanLiteralInfo | null;
     numberLiteral: NumberLiteralInfo | null;
     typeArguments: TypeInfo[];
+}
+
+interface FunctionTypeInfo {
+    typeParameters: ExtractTypeParametersResult;
+    parameters: ParameterInfo[];
+    returnType: TypeInfo;
 }
 
 interface GlobalVariableInfo {
@@ -89,14 +96,14 @@ interface TypeParameter {
 
 interface MethodInfo {
     name: string;
-    typeParameters: TypeParameter[];
+    typeParameters: ExtractTypeParametersResult;
     returnType: TypeInfo;
     parameters: ParameterInfo[];
 }
 
 interface InterfaceInfo {
     name: string;
-    typeParameters: TypeParameter[];
+    typeParameters: ExtractTypeParametersResult;
     extendsList: string[];
     properties: PropertyInfo[];
     methods: MethodInfo[];
@@ -286,6 +293,7 @@ function extractTypeInfo(typeNode: ts.TypeNode): TypeInfo {
             intersection: null,
             parenthesized: null,
             single: null,
+            function: null,
         }
     }
 
@@ -303,6 +311,7 @@ function extractTypeInfo(typeNode: ts.TypeNode): TypeInfo {
             },
             parenthesized: null,
             single: null,
+            function: null,
         }
     }
 
@@ -312,6 +321,21 @@ function extractTypeInfo(typeNode: ts.TypeNode): TypeInfo {
             intersection: null,
             parenthesized: extractTypeInfo(typeNode.type),
             single: null,
+            function: null,
+        }
+    }
+
+    if (ts.isFunctionTypeNode(typeNode)) {
+        return {
+            union: null,
+            intersection: null,
+            parenthesized: null,
+            single: null,
+            function: {
+                parameters: extractParameters(typeNode.parameters),
+                typeParameters: extractTypeParameters(typeNode.typeParameters),
+                returnType: extractTypeInfo(typeNode.type)
+            },
         }
     }
 
@@ -319,7 +343,8 @@ function extractTypeInfo(typeNode: ts.TypeNode): TypeInfo {
         union: null,
         intersection: null,
         parenthesized: null,
-        single: extractSingleTypeInfo(typeNode)
+        single: extractSingleTypeInfo(typeNode),
+        function: null,
     };
 }
 
@@ -477,30 +502,18 @@ inputTypeDefinitions.forEach(inputTypeDefinition => {
                     return;
                 }
 
-                const typeParametersResult = extractTypeParameters(member.typeParameters);
-
-                if (typeParametersResult.anyConstraintsAreNotSimple) {
-                    return;
-                }
-
                 methods.push({
                     name: member.name.text,
                     parameters: extractParameters(member.parameters),
-                    typeParameters: typeParametersResult.typeParameters,
+                    typeParameters: extractTypeParameters(member.typeParameters),
                     returnType: extractTypeInfo(member.type),
                 });
             });
 
-            const typeParametersResult = extractTypeParameters(statement.typeParameters);
-
-            if (typeParametersResult.anyConstraintsAreNotSimple) {
-                return;
-            }
-
             const interfaceInfo: InterfaceInfo = {
                 name: statement.name.text,
                 extendsList: extendsList,
-                typeParameters: typeParametersResult.typeParameters,
+                typeParameters: extractTypeParameters(statement.typeParameters),
                 properties: extractProperties(statement.members),
                 methods: methods,
             };
