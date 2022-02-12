@@ -1,0 +1,15 @@
+{
+  "name": "tsdumper",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dump": "ts-node tsdumper.ts"
+  },
+  "dependencies": {
+    "typescript": "4.5.5",
+    "ts-node": "10.5.0"
+  },
+  "author": "RealGoodApps, LLC",
+  "license": "MIT"
+}
