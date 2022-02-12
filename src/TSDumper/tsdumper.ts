@@ -107,6 +107,16 @@ interface IndexerInfo {
     returnType: TypeInfo;
 }
 
+interface GetAccessorInfo {
+    name: string;
+    returnType: TypeInfo;
+}
+
+interface SetAccessorInfo {
+    name: string;
+    parameters: ParameterInfo[];
+}
+
 interface InterfaceInfo {
     name: string;
     extractTypeParametersResult: ExtractTypeParametersResult;
@@ -114,6 +124,8 @@ interface InterfaceInfo {
     properties: PropertyInfo[];
     methods: MethodInfo[];
     indexers: IndexerInfo[];
+    getAccessors: GetAccessorInfo[];
+    setAccessors: SetAccessorInfo[];
 }
 
 interface ParsedInfo {
@@ -618,6 +630,33 @@ function postProcessParsedInfo(parsedInfo: ParsedInfo): ParsedInfo {
             postProcessedIndexers.push(indexer);
         });
 
+        const postProcessedGetAccessors: GetAccessorInfo[] = [];
+
+        interfaceInfo.getAccessors.forEach(getAccessor => {
+            if (recursiveCheckForNonSimpleTypeArgument(getAccessor.returnType)) {
+                return;
+            }
+
+            postProcessedGetAccessors.push(getAccessor);
+        });
+
+        const postProcessedSetAccessors: SetAccessorInfo[] = [];
+
+        interfaceInfo.setAccessors.forEach(setAccessor => {
+            let keepSetAccessor = true;
+
+            setAccessor.parameters.forEach(parameter => {
+                if (recursiveCheckForNonSimpleTypeArgument(parameter.type)) {
+                    keepSetAccessor = false;
+                    return;
+                }
+            });
+
+            if (keepSetAccessor) {
+                postProcessedSetAccessors.push(setAccessor);
+            }
+        });
+
         postProcessedInterfaces.push({
             name: interfaceInfo.name,
             methods: postProcessedMethods,
@@ -625,6 +664,8 @@ function postProcessParsedInfo(parsedInfo: ParsedInfo): ParsedInfo {
             extendsList: interfaceInfo.extendsList,
             properties: postProcessedProperties,
             indexers: postProcessedIndexers,
+            getAccessors: postProcessedGetAccessors,
+            setAccessors: postProcessedSetAccessors
         });
     });
 
@@ -703,6 +744,32 @@ inputTypeDefinitions.forEach(inputTypeDefinition => {
                 });
             });
 
+            const getAccessors: GetAccessorInfo[] = [];
+
+            statement.members.forEach(member => {
+                if (!ts.isGetAccessor(member) || !ts.isIdentifier(member.name) || !member.type) {
+                    return;
+                }
+
+                getAccessors.push({
+                    name: member.name.text,
+                    returnType: extractTypeInfo(member.type)
+                });
+            })
+
+            const setAccessors: SetAccessorInfo[] = [];
+
+            statement.members.forEach(member => {
+                if (!ts.isSetAccessor(member) || !ts.isIdentifier(member.name)) {
+                    return;
+                }
+
+                setAccessors.push({
+                    name: member.name.text,
+                    parameters: extractParameters(member.parameters)
+                });
+            })
+
             const interfaceInfo: InterfaceInfo = {
                 name: statement.name.text,
                 extendsList: extendsList,
@@ -710,6 +777,8 @@ inputTypeDefinitions.forEach(inputTypeDefinition => {
                 properties: extractProperties(statement.members),
                 methods: methods,
                 indexers: indexers,
+                getAccessors: getAccessors,
+                setAccessors: setAccessors
             };
 
             parsedInfo.interfaces.push(interfaceInfo);
