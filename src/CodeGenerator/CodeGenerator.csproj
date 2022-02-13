@@ -7,5 +7,9 @@
         <Nullable>enable</Nullable>
         <RootNamespace>RealGoodApps.BlazorJavascript.CodeGenerator</RootNamespace>
     </PropertyGroup>
+    
+    <ItemGroup>
+        <PackageReference Include="Newtonsoft.Json" Version="[13.0.1]" />
+    </ItemGroup>
 
 </Project>

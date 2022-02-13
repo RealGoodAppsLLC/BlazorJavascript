@@ -1,2 +1,5 @@
 node_modules/
 src/TSDumper/output/
+src/Interop/Generated/
+bin/
+obj/

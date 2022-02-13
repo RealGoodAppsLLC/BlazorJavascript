@@ -1,4 +1,7 @@
-﻿namespace RealGoodApps.BlazorJavascript.CodeGenerator
+﻿using Newtonsoft.Json;
+using RealGoodApps.BlazorJavascript.CodeGenerator.Models;
+
+namespace RealGoodApps.BlazorJavascript.CodeGenerator
 {
     public static class Program
     {
@@ -19,6 +22,12 @@
                 return 1;
             }
 
+            // TODO: Before we nuke the directory, we should probably warn the user.
+            if (Directory.Exists(outputDirectory))
+            {
+                Directory.Delete(outputDirectory, true);
+            }
+
             Directory.CreateDirectory(outputDirectory);
 
             var typeDefinitionFiles = new[]
@@ -37,6 +46,19 @@
                     Console.WriteLine($"Unable to find {typeDefinitionFilePath}, exiting!");
                     return 1;
                 }
+
+                var parsedInfo = JsonConvert.DeserializeObject<ParsedInfo>(File.ReadAllText(typeDefinitionFilePath));
+
+                if (parsedInfo == null)
+                {
+                    Console.WriteLine($"The type definition file ({typeDefinitionFilePath}) is not formatted properly.");
+                    return 1;
+                }
+                var generator = new Generators.CodeGenerator(
+                    parsedInfo,
+                    outputDirectory);
+
+                generator.Generate();
             }
 
             return 0;
