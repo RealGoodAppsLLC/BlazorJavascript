@@ -53,6 +53,36 @@ public class CodeGenerator
         stringBuilder.Append(Environment.NewLine);
 
         stringBuilder.AppendLine("  {");
+
+        foreach (var methodInfo in interfaceInfo.Methods)
+        {
+            // FIXME: We are skipping any methods that are not simple enough for a 1 to 1 translation.
+            //        For example, nothing with generics, union types, intersection types, or function parameters.
+            if (methodInfo.ExtractTypeParametersResult.TypeParameters.Any())
+            {
+                continue;
+            }
+
+            if (methodInfo.ReturnType.Single == null)
+            {
+                continue;
+            }
+
+            if (methodInfo.Parameters.Any(parameterInfo => parameterInfo.Type.Single == null))
+            {
+                continue;
+            }
+
+            // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
+            stringBuilder.Append("    ");
+            stringBuilder.Append(methodInfo.ReturnType.Single.Name);
+            stringBuilder.Append(' ');
+            stringBuilder.Append(methodInfo.Name);
+            stringBuilder.Append('(');
+            stringBuilder.Append(");");
+            stringBuilder.Append(Environment.NewLine);
+        }
+
         stringBuilder.AppendLine("  }");
         stringBuilder.AppendLine("}");
 
