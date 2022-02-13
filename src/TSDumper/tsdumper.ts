@@ -8,6 +8,7 @@ import { convertToJson } from "./includes/json";
 
 const inputTypeDefinitions = [
     'lib.dom.d',
+    'lib.es5.d',
 ];
 
 const isPrettyPrint = process.argv.indexOf('--pretty') !== -1;
