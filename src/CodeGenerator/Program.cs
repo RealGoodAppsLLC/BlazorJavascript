@@ -1,5 +1,7 @@
-﻿using Newtonsoft.Json;
+﻿using System.Collections.Immutable;
+using Newtonsoft.Json;
 using RealGoodApps.BlazorJavascript.CodeGenerator.Models;
+using RealGoodApps.BlazorJavascript.CodeGenerator.Parsing;
 
 namespace RealGoodApps.BlazorJavascript.CodeGenerator
 {
@@ -33,7 +35,10 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             var typeDefinitionFiles = new[]
             {
                 "lib.dom.d",
+                "lib.es5.d",
             };
+
+            var parsedInfoList = new List<ParsedInfo>();
 
             foreach (var typeDefinitionFile in typeDefinitionFiles)
             {
@@ -54,12 +59,18 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                     Console.WriteLine($"The type definition file ({typeDefinitionFilePath}) is not formatted properly.");
                     return 1;
                 }
-                var generator = new Generators.CodeGenerator(
-                    parsedInfo,
-                    outputDirectory);
 
-                generator.Generate();
+                parsedInfoList.Add(parsedInfo);
             }
+
+            var merger = new ParsingInfoMerger(parsedInfoList.ToImmutableList());
+            var mergedParseInfo = merger.Merge();
+
+            var generator = new Generators.CodeGenerator(
+                mergedParseInfo,
+                outputDirectory);
+
+            generator.Generate();
 
             return 0;
         }
