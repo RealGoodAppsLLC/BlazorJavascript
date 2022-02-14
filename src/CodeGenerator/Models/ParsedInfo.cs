@@ -4,5 +4,6 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator.Models
 {
     public sealed record ParsedInfo(
         ImmutableList<GlobalVariableInfo> GlobalVariables,
-        ImmutableList<InterfaceInfo> Interfaces);
+        ImmutableList<InterfaceInfo> Interfaces,
+        ImmutableList<TypeAliasInfo> TypeAliases);
 }

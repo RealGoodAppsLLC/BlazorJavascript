@@ -14,17 +14,16 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
         public ParsedInfo Merge()
         {
-            var globalVariables = _parsedInfoList
-                .SelectMany(parsedInfo => parsedInfo.GlobalVariables)
-                .ToImmutableList();
-
             var interfaces = MergeInterfaces();
 
             return new ParsedInfo(
                 _parsedInfoList
                     .SelectMany(parsedInfo => parsedInfo.GlobalVariables)
                     .ToImmutableList(),
-                interfaces);
+                interfaces,
+                _parsedInfoList
+                    .SelectMany(parsedInfo => parsedInfo.TypeAliases)
+                    .ToImmutableList());
         }
 
         private ImmutableList<InterfaceInfo> MergeInterfaces()

@@ -59,28 +59,9 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             }
 
             var extendsList = interfaceInfo.ExtendsList
-                .Select(extendTypeInfo => extendTypeInfo.Single)
-                .WhereNotNull()
-                .Select(extendSingleType =>
-                {
-                    var fullName = new StringBuilder();
-                    fullName.Append(extendSingleType.Name);
-
-                    var typeArguments = extendSingleType
-                        .TypeArguments
-                        .Select(typeArgument => typeArgument.Single)
-                        .WhereNotNull()
-                        .ToImmutableList();
-
-                    if (typeArguments.Any())
-                    {
-                        fullName.Append('<');
-                        fullName.Append(string.Join(",", typeArguments.Select(typeArgument => typeArgument.Name)));
-                        fullName.Append('>');
-                    }
-
-                    return fullName.ToString();
-                })
+                .Select(extendTypeInfo => extendTypeInfo)
+                .Where(extendTypeInfo => extendTypeInfo.Single != null)
+                .Select(GetRenderedTypeName)
                 .Append("IJSObject")
                 .ToImmutableList();
             stringBuilder.Append($" : {string.Join(", ", extendsList)}");
@@ -97,25 +78,19 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                     continue;
                 }
 
-                if (methodInfo.ReturnType.Single == null
-                    || methodInfo.ReturnType.Single.IsUnhandled
-                    || methodInfo.ReturnType.Single.TypeArguments.Any()
-                    || string.IsNullOrWhiteSpace(methodInfo.ReturnType.Single.Name))
+                if (IsFinalTypeSimpleEnoughToRender(methodInfo.ReturnType))
                 {
                     continue;
                 }
 
-                if (methodInfo.Parameters.Any(parameterInfo => parameterInfo.Type.Single == null
-                                                               || parameterInfo.Type.Single.IsUnhandled
-                                                               || parameterInfo.Type.Single.TypeArguments.Any()
-                                                               || string.IsNullOrWhiteSpace(parameterInfo.Type.Single.Name)))
+                if (methodInfo.Parameters.Any(parameterInfo => IsFinalTypeSimpleEnoughToRender(parameterInfo.Type)))
                 {
                     continue;
                 }
 
                 // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
                 stringBuilder.Append("    ");
-                stringBuilder.Append(methodInfo.ReturnType.Single.GetNameForCSharp());
+                stringBuilder.Append(GetRenderedTypeName(methodInfo.ReturnType));
                 stringBuilder.Append(' ');
                 stringBuilder.Append(methodInfo.GetNameForCSharp());
                 stringBuilder.Append('(');
@@ -129,7 +104,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                         stringBuilder.Append(", ");
                     }
 
-                    stringBuilder.Append(parameterInfo.Type.Single?.GetNameForCSharp());
+                    stringBuilder.Append(GetRenderedTypeName(parameterInfo.Type));
                     stringBuilder.Append(' ');
                     stringBuilder.Append(parameterInfo.GetNameForCSharp());
                     isFirst = false;
@@ -143,6 +118,70 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             stringBuilder.AppendLine("}");
 
             return stringBuilder.ToString();
+        }
+
+        private bool IsFinalTypeSimpleEnoughToRender(TypeInfo parameterInfoType)
+        {
+            // FIXME: Eventually, this method shouldn't really exist. It is just used to prevent us from having to handle complex type cases right now.
+            var finalTypeInfo = ProcessTypeAliases(parameterInfoType);
+
+            return finalTypeInfo.Single == null
+                   || finalTypeInfo.Single.IsUnhandled
+                   || finalTypeInfo.Single.TypeArguments.Any()
+                   || string.IsNullOrWhiteSpace(finalTypeInfo.Single.Name);
+        }
+
+        private string GetRenderedTypeName(TypeInfo typeInfo)
+        {
+            var finalTypeInfo = ProcessTypeAliases(typeInfo);
+
+            var singleTypeInfo = finalTypeInfo.Single;
+
+            if (singleTypeInfo == null)
+            {
+                throw new Exception("The type name can not be rendered properly due to complexity.");
+            }
+
+            var fullName = new StringBuilder();
+            fullName.Append(singleTypeInfo.GetNameForCSharp());
+
+            var typeArguments = singleTypeInfo
+                .TypeArguments
+                .Select(typeArgument => typeArgument.Single)
+                .WhereNotNull()
+                .ToImmutableList();
+
+            if (typeArguments.Any())
+            {
+                fullName.Append('<');
+                fullName.Append(string.Join(",", typeArguments.Select(typeArgument => typeArgument.Name)));
+                fullName.Append('>');
+            }
+
+            return fullName.ToString();
+        }
+
+        private TypeInfo ProcessTypeAliases(TypeInfo typeInfo)
+        {
+            // Anything that looks like a single type is a candidate for being an alias.
+            if (typeInfo.Single == null)
+            {
+                return typeInfo;
+            }
+
+            while (true)
+            {
+                // FIXME: We are assuming that you can only type alias the most simple case for now.
+                var typeAlias = _parsedInfo.TypeAliases
+                    .FirstOrDefault(typeAlias => typeInfo.Single != null && typeAlias.Name == typeInfo.Single.Name);
+
+                if (typeAlias == null)
+                {
+                    return typeInfo;
+                }
+
+                typeInfo = typeAlias.AliasType;
+            }
         }
     }
 }
