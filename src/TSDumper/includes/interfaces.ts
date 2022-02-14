@@ -4,12 +4,13 @@ import { extractProperties, PropertyInfo } from "./properties";
 import { extractMethods, MethodInfo } from "./methods";
 import { extractIndexers, IndexerInfo } from "./indexers";
 import { extractGetAccessors, extractSetAccessors, GetAccessorInfo, SetAccessorInfo } from "./accessors";
+import { extractTypeInfo, TypeInfo } from "./types";
 import { SourceFile } from "typescript";
 
 export interface InterfaceInfo {
     name: string;
     extractTypeParametersResult: ExtractTypeParametersResult;
-    extendsList: string[];
+    extendsList: TypeInfo[];
     properties: PropertyInfo[];
     methods: MethodInfo[];
     indexers: IndexerInfo[];
@@ -26,7 +27,7 @@ export const extractInterfaces = (sourceFile: SourceFile): InterfaceInfo[] => {
             return;
         }
 
-        const extendsList: string[] = [];
+        const extendsList: TypeInfo[] = [];
 
         if (!!statement.heritageClauses) {
             statement.heritageClauses.forEach(heritageClause => {
@@ -40,7 +41,8 @@ export const extractInterfaces = (sourceFile: SourceFile): InterfaceInfo[] => {
                         return;
                     }
 
-                    extendsList.push(type.expression.text);
+                    var extendType = extractTypeInfo(type);
+                    extendsList.push(extendType);
                 });
             });
         }

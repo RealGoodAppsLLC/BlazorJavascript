@@ -60,6 +60,26 @@ const extractSingleTypeInfo = (typeNode: ts.TypeNode): SingleTypeInfo => {
         };
     }
 
+    if (ts.isExpressionWithTypeArguments(typeNode)
+        && ts.isIdentifier(typeNode.expression)) {
+        const typeArguments: TypeInfo[] = [];
+
+        if (!!typeNode.typeArguments) {
+            typeNode.typeArguments.forEach(typeArgument => {
+                typeArguments.push(extractTypeInfo(typeArgument));
+            });
+        }
+
+        return {
+            name: typeNode.expression.text,
+            stringLiteral: null,
+            booleanLiteral: null,
+            numberLiteral: null,
+            typeArguments: typeArguments,
+            isUnhandled: false,
+        };
+    }
+
     if (typeNode.kind === ts.SyntaxKind.NumberKeyword) {
         return {
             name: "number",

@@ -5,7 +5,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator.Models
     public sealed record InterfaceInfo(
         string Name,
         ExtractTypeParametersResult ExtractTypeParametersResult,
-        ImmutableList<string> ExtendsList,
+        ImmutableList<TypeInfo> ExtendsList,
         ImmutableList<PropertyInfo> Properties,
         ImmutableList<MethodInfo> Methods,
         ImmutableList<IndexerInfo> Indexers,
