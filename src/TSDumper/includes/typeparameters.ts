@@ -3,6 +3,7 @@ import { extractTypeInfo, TypeInfo } from "./types";
 
 export interface TypeParameter {
     name: string;
+    default: TypeInfo | null;
     constraint: TypeInfo | null;
 }
 
@@ -34,8 +35,6 @@ export const extractTypeParameters = (
                 return;
             }
 
-            // FIXME: For now, we are ignoring defaults for type parameters.
-            //        We might be able to emulate this with subclassing: https://stackoverflow.com/a/707788.
             let constraint: TypeInfo | null = null;
 
             if (!!typeParameter.constraint) {
@@ -47,8 +46,15 @@ export const extractTypeParameters = (
                 constraint = extractTypeInfo(typeParameter.constraint);
             }
 
+            let defaultTypeInfo: TypeInfo | null = null;
+
+            if (!!typeParameter.default) {
+                defaultTypeInfo = extractTypeInfo(typeParameter.default);
+            }
+
             typeParameters.push({
                 name: typeParameter.name.text,
+                default: defaultTypeInfo,
                 constraint: constraint,
             });
         });
