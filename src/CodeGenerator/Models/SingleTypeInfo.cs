@@ -14,7 +14,22 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator.Models
         {
             if (this.Name == "boolean")
             {
-                return "bool";
+                return "JSBoolean";
+            }
+
+            if (this.Name == "string")
+            {
+                return "JSString";
+            }
+
+            if (this.Name == "any")
+            {
+                return "IJSObject";
+            }
+
+            if (this.Name == "number")
+            {
+                return "JSNumber";
             }
 
             return this.Name;
