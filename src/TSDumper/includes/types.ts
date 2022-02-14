@@ -21,6 +21,7 @@ export interface TypeInfo {
     parenthesized: TypeInfo | null;
     single: SingleTypeInfo | null;
     function: FunctionTypeInfo | null;
+    array: TypeInfo | null;
 }
 
 export interface UnionTypeInfo {
@@ -55,18 +56,6 @@ const extractSingleTypeInfo = (typeNode: ts.TypeNode): SingleTypeInfo => {
             booleanLiteral: null,
             numberLiteral: null,
             typeArguments: extractTypeArguments(typeNode),
-            isUnhandled: false,
-        };
-    }
-
-    if (ts.isArrayTypeNode(typeNode)) {
-        const typeName = extractSingleTypeInfo(typeNode.elementType);
-        return {
-            name: `${typeName}[]`,
-            stringLiteral: null,
-            booleanLiteral: null,
-            numberLiteral: null,
-            typeArguments: [],
             isUnhandled: false,
         };
     }
@@ -224,6 +213,7 @@ export const extractTypeInfo = (typeNode: ts.TypeNode): TypeInfo => {
             parenthesized: null,
             single: null,
             function: null,
+            array: null,
         }
     }
 
@@ -242,6 +232,7 @@ export const extractTypeInfo = (typeNode: ts.TypeNode): TypeInfo => {
             parenthesized: null,
             single: null,
             function: null,
+            array: null,
         }
     }
 
@@ -252,6 +243,7 @@ export const extractTypeInfo = (typeNode: ts.TypeNode): TypeInfo => {
             parenthesized: extractTypeInfo(typeNode.type),
             single: null,
             function: null,
+            array: null,
         }
     }
 
@@ -266,6 +258,18 @@ export const extractTypeInfo = (typeNode: ts.TypeNode): TypeInfo => {
                 extractTypeParametersResult: extractTypeParameters(typeNode.typeParameters),
                 returnType: extractTypeInfo(typeNode.type)
             },
+            array: null,
+        }
+    }
+
+    if (ts.isArrayTypeNode(typeNode)) {
+        return {
+            union: null,
+            intersection: null,
+            parenthesized: null,
+            single: null,
+            function: null,
+            array: extractTypeInfo(typeNode.elementType),
         }
     }
 
@@ -275,5 +279,6 @@ export const extractTypeInfo = (typeNode: ts.TypeNode): TypeInfo => {
         parenthesized: null,
         single: extractSingleTypeInfo(typeNode),
         function: null,
+        array: null,
     };
 };

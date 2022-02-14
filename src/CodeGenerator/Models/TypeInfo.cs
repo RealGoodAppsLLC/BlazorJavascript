@@ -5,5 +5,6 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator.Models
         IntersectionTypeInfo? Intersection,
         TypeInfo? Parenthesized,
         SingleTypeInfo? Single,
-        FunctionTypeInfo? Function);
+        FunctionTypeInfo? Function,
+        TypeInfo? Array);
 }
