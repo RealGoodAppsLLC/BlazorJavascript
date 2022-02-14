@@ -6,5 +6,11 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator.Models
         string Name,
         ExtractTypeParametersResult ExtractTypeParametersResult,
         TypeInfo ReturnType,
-        ImmutableList<ParameterInfo> Parameters);
+        ImmutableList<ParameterInfo> Parameters)
+    {
+        public string GetNameForCSharp()
+        {
+            return ReservedKeywords.SanitizeName(this.Name);
+        }
+    }
 }

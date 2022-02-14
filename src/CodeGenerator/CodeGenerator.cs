@@ -63,22 +63,42 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                     continue;
                 }
 
-                if (methodInfo.ReturnType.Single == null)
+                if (methodInfo.ReturnType.Single == null
+                    || methodInfo.ReturnType.Single.IsUnhandled
+                    || string.IsNullOrWhiteSpace(methodInfo.ReturnType.Single.Name))
                 {
                     continue;
                 }
 
-                if (methodInfo.Parameters.Any(parameterInfo => parameterInfo.Type.Single == null))
+                if (methodInfo.Parameters.Any(parameterInfo => parameterInfo.Type.Single == null
+                                                               || parameterInfo.Type.Single.IsUnhandled
+                                                               || string.IsNullOrWhiteSpace(parameterInfo.Type.Single.Name)))
                 {
                     continue;
                 }
 
                 // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
                 stringBuilder.Append("    ");
-                stringBuilder.Append(methodInfo.ReturnType.Single.Name);
+                stringBuilder.Append(methodInfo.ReturnType.Single.GetNameForCSharp());
                 stringBuilder.Append(' ');
-                stringBuilder.Append(methodInfo.Name);
+                stringBuilder.Append(methodInfo.GetNameForCSharp());
                 stringBuilder.Append('(');
+
+                var isFirst = true;
+
+                foreach (var parameterInfo in methodInfo.Parameters)
+                {
+                    if (!isFirst)
+                    {
+                        stringBuilder.Append(", ");
+                    }
+
+                    stringBuilder.Append(parameterInfo.Type.Single?.GetNameForCSharp());
+                    stringBuilder.Append(' ');
+                    stringBuilder.Append(parameterInfo.GetNameForCSharp());
+                    isFirst = false;
+                }
+
                 stringBuilder.Append(");");
                 stringBuilder.Append(Environment.NewLine);
             }
