@@ -157,6 +157,26 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 fullName.Append(string.Join(",", typeArguments.Select(typeArgument => typeArgument.Name)));
                 fullName.Append('>');
             }
+            else
+            {
+                // There is a possibility that the type we are rendering is actually an interface that has one or more default type parameters.
+                var typeAsInterface =
+                    _parsedInfo.Interfaces.FirstOrDefault(interfaceInfo => interfaceInfo.Name == singleTypeInfo.Name);
+
+                if (typeAsInterface != null && typeAsInterface.ExtractTypeParametersResult.TypeParameters.Any())
+                {
+                    fullName.Append('<');
+
+                    foreach (var typeParameter in typeAsInterface.ExtractTypeParametersResult.TypeParameters)
+                    {
+                        fullName.Append(typeParameter.Default == null
+                            ? "IJSObject"
+                            : GetRenderedTypeName(typeParameter.Default));
+                    }
+
+                    fullName.Append('>');
+                }
+            }
 
             return fullName.ToString();
         }
