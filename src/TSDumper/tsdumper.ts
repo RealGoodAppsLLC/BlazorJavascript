@@ -3,6 +3,7 @@ import * as ts from "typescript";
 import { ParsedInfo} from "./includes/parsed";
 import { extractGlobalVariables } from "./includes/globalvariables";
 import { extractInterfaces } from "./includes/interfaces";
+import { extractTypeAliases } from "./includes/typealias";
 import { runPostProcessing } from "./includes/postprocess";
 import { convertToJson } from "./includes/json";
 
@@ -31,6 +32,7 @@ inputTypeDefinitions.forEach(inputTypeDefinition => {
     const parsedInfo: ParsedInfo = {
         globalVariables: extractGlobalVariables(sourceFile),
         interfaces: extractInterfaces(sourceFile),
+        typeAliases: extractTypeAliases(sourceFile),
     };
 
     const postProcessedInfo = runPostProcessing(parsedInfo);

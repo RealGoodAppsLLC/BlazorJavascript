@@ -195,5 +195,6 @@ export const runPostProcessing = (parsedInfo: ParsedInfo): ParsedInfo => {
     return {
         globalVariables: postProcessedGlobalVariables,
         interfaces: postProcessedInterfaces,
+        typeAliases: parsedInfo.typeAliases,
     };
 };
