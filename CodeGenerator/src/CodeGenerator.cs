@@ -46,7 +46,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             stringBuilder.AppendLine("namespace RealGoodApps.BlazorJavascript.Interop.Interfaces");
             stringBuilder.AppendLine("{");
 
-            stringBuilder.Append($"  public interface I{interfaceInfo.Name}");
+            stringBuilder.Append($"{Indent(1)}public interface I{interfaceInfo.Name}");
 
             if (interfaceInfo.ExtractTypeParametersResult.TypeParameters.Any())
             {
@@ -67,7 +67,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             stringBuilder.Append($" : {string.Join(", ", extendsList)}");
             stringBuilder.Append(Environment.NewLine);
 
-            stringBuilder.AppendLine("  {");
+            stringBuilder.AppendLine(Indent(1) + "{");
 
             foreach (var methodInfo in interfaceInfo.Methods)
             {
@@ -89,7 +89,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 }
 
                 // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
-                stringBuilder.Append("    ");
+                stringBuilder.Append(Indent(2));
                 stringBuilder.Append(GetRenderedTypeName(methodInfo.ReturnType));
                 stringBuilder.Append(' ');
                 stringBuilder.Append(methodInfo.GetNameForCSharp());
@@ -114,10 +114,22 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 stringBuilder.Append(Environment.NewLine);
             }
 
-            stringBuilder.AppendLine("  }");
+            stringBuilder.AppendLine(Indent(1) + "}");
             stringBuilder.AppendLine("}");
 
             return stringBuilder.ToString();
+        }
+
+        private static string Indent(int levels)
+        {
+            var indentationBuilder = new StringBuilder();
+
+            for (int level = 1; level <= levels; level++)
+            {
+                indentationBuilder.Append("    ");
+            }
+
+            return indentationBuilder.ToString();
         }
 
         private bool IsFinalTypeSimpleEnoughToRender(TypeInfo parameterInfoType)
