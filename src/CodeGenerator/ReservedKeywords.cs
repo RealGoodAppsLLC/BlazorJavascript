@@ -11,42 +11,17 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 name = $"{firstLetterUppercase}{afterFirstLetter}";
             }
 
-            if (name == "string")
+            return name switch
             {
-                return "@string";
-            }
-
-            if (name == "object")
-            {
-                return "@object";
-            }
-
-            if (name == "this")
-            {
-                return "@this";
-            }
-
-            if (name == "event")
-            {
-                return "@event";
-            }
-
-            if (name == "continue")
-            {
-                return "@continue";
-            }
-
-            if (name == "lock")
-            {
-                return "@lock";
-            }
-
-            if (name == "ref")
-            {
-                return "@ref";
-            }
-
-            return name;
+                "string" => "@string",
+                "object" => "@object",
+                "this" => "@this",
+                "event" => "@event",
+                "continue" => "@continue",
+                "lock" => "@lock",
+                "ref" => "@ref",
+                _ => name
+            };
         }
     }
 }
