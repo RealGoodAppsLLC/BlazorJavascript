@@ -1,0 +1,21 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{EBB87F0E-2B12-4073-A526-2960E171A33B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Interop", "src\Interop.csproj", "{5D271C06-F57E-47F2-8C6C-C55239BCE127}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{5D271C06-F57E-47F2-8C6C-C55239BCE127} = {EBB87F0E-2B12-4073-A526-2960E171A33B}
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5D271C06-F57E-47F2-8C6C-C55239BCE127}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5D271C06-F57E-47F2-8C6C-C55239BCE127}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5D271C06-F57E-47F2-8C6C-C55239BCE127}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5D271C06-F57E-47F2-8C6C-C55239BCE127}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

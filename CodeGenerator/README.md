@@ -6,5 +6,5 @@ The `CodeGenerator` project is a tool to take the output from the `TSDumper` pro
 
 ```bash
 # Run the tool
-$ dotnet run --project CodeGenerator.csproj /path/to/TSDumper/output /path/to/CodeGenerator/output
+$ dotnet run --project src/CodeGenerator.csproj ../TSDumper/output ../Interop/src/Generated
 ```

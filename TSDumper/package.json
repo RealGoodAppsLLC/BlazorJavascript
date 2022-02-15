@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dump": "ts-node tsdumper.ts"
+    "dump": "ts-node src/tsdumper.ts"
   },
   "dependencies": {
     "typescript": "4.5.5",

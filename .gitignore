@@ -1,5 +1,5 @@
 node_modules/
-src/TSDumper/output/
-src/Interop/Generated/
+TSDumper/output/
+Interop/src/Generated/
 bin/
 obj/

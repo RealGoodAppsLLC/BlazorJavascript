@@ -6,10 +6,7 @@ The `Interop` project is the final package that is shipped and consumed by clien
 
 ```bash
 # Run the code generator
-$ dotnet run --project CodeGenerator.csproj /path/to/TSDumper/output /path/to/Interop/Generated
-
-# Change to the interop project
-$ cd /path/to/Interop
+$ dotnet run --project ../CodeGenerator/src/CodeGenerator.csproj ../TSDumper/output ../Interop/src/Generated
 
 # Build the interop project
 $ dotnet pack --configuration Release
