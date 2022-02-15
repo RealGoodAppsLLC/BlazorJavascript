@@ -7,7 +7,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator.Models
     {
         public string GetNameForCSharp()
         {
-            return ReservedKeywords.SanitizeName(this.Name);
+            return ReservedKeywords.SanitizeName(this.Name, false);
         }
     }
 }

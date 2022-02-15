@@ -2,8 +2,15 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 {
     public static class ReservedKeywords
     {
-        public static string SanitizeName(string name)
+        public static string SanitizeName(string name, bool applyCamelCase)
         {
+            if (applyCamelCase)
+            {
+                var firstLetterUppercase = name[..1].ToUpperInvariant();
+                var afterFirstLetter = name[1..];
+                name = $"{firstLetterUppercase}{afterFirstLetter}";
+            }
+
             if (name == "string")
             {
                 return "@string";
