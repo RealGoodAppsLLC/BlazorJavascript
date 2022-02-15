@@ -10,7 +10,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator.Models
         ImmutableList<TypeInfo> TypeArguments,
         bool IsUnhandled)
     {
-        public string? GetNameForCSharp()
+        public string? GetNameForCSharp(ImmutableList<InterfaceInfo> interfaces)
         {
             if (this.Name == "boolean")
             {
@@ -30,6 +30,18 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator.Models
             if (this.Name == "number")
             {
                 return "JSNumber";
+            }
+
+            if (this.Name == "void")
+            {
+                return "void";
+            }
+
+            var isInterface = interfaces.Any(interfaceInfo => this.Name == interfaceInfo.Name);
+
+            if (isInterface)
+            {
+                return $"I{this.Name}";
             }
 
             return this.Name;

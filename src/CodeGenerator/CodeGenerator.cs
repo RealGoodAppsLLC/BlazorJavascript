@@ -25,7 +25,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
                 var interfaceOutputPath = Path.Combine(
                     _outputDirectory,
-                    $"{interfaceInfo.Name}.cs");
+                    $"I{interfaceInfo.Name}.cs");
 
                 if (File.Exists(interfaceOutputPath))
                 {
@@ -46,7 +46,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             stringBuilder.AppendLine("namespace RealGoodApps.BlazorJavascript.Interop.Interfaces");
             stringBuilder.AppendLine("{");
 
-            stringBuilder.Append($"  public interface {interfaceInfo.Name}");
+            stringBuilder.Append($"  public interface I{interfaceInfo.Name}");
 
             if (interfaceInfo.ExtractTypeParametersResult.TypeParameters.Any())
             {
@@ -143,7 +143,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             }
 
             var fullName = new StringBuilder();
-            fullName.Append(singleTypeInfo.GetNameForCSharp());
+            fullName.Append(singleTypeInfo.GetNameForCSharp(_parsedInfo.Interfaces));
 
             var typeArguments = singleTypeInfo
                 .TypeArguments
@@ -154,7 +154,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             if (typeArguments.Any())
             {
                 fullName.Append('<');
-                fullName.Append(string.Join(",", typeArguments.Select(typeArgument => typeArgument.Name)));
+                fullName.Append(string.Join(",", typeArguments.Select(typeArgument => typeArgument.GetNameForCSharp(_parsedInfo.Interfaces))));
                 fullName.Append('>');
             }
             else
