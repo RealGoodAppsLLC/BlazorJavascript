@@ -6,9 +6,5 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator.Models
         string Name,
         ExtractTypeParametersResult ExtractTypeParametersResult,
         ImmutableList<TypeInfo> ExtendsList,
-        ImmutableList<PropertyInfo> Properties,
-        ImmutableList<MethodInfo> Methods,
-        ImmutableList<IndexerInfo> Indexers,
-        ImmutableList<GetAccessorInfo> GetAccessors,
-        ImmutableList<SetAccessorInfo> SetAccessors);
+        InterfaceBodyInfo Body);
 }

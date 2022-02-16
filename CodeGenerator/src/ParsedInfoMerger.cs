@@ -52,23 +52,33 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                             .AddRange(@interface.ExtendsList)
                             .Distinct()
                             .ToImmutableList(),
-                        existingInterface
-                            .Properties
-                            .AddRange(@interface.Properties)
-                            .DistinctBy(interfaceInfo => interfaceInfo.Name)
-                            .ToImmutableList(),
-                        existingInterface
-                            .Methods
-                            .AddRange(@interface.Methods),
-                        existingInterface
-                            .Indexers
-                            .AddRange(@interface.Indexers),
-                        existingInterface
-                            .GetAccessors
-                            .AddRange(@interface.GetAccessors),
-                        existingInterface
-                            .SetAccessors
-                            .AddRange(@interface.SetAccessors));
+                        new InterfaceBodyInfo(
+                            existingInterface
+                                .Body
+                                .Constructors
+                                .AddRange(@interface.Body.Constructors),
+                            existingInterface
+                                .Body
+                                .Properties
+                                .AddRange(@interface.Body.Properties)
+                                .DistinctBy(interfaceInfo => interfaceInfo.Name)
+                                .ToImmutableList(),
+                            existingInterface
+                                .Body
+                                .Methods
+                                .AddRange(@interface.Body.Methods),
+                            existingInterface
+                                .Body
+                                .Indexers
+                                .AddRange(@interface.Body.Indexers),
+                            existingInterface
+                                .Body
+                                .GetAccessors
+                                .AddRange(@interface.Body.GetAccessors),
+                            existingInterface
+                                .Body
+                                .SetAccessors
+                                .AddRange(@interface.Body.SetAccessors)));
 
                     interfaces[@interface.Name] = combinedInfo;
                 }

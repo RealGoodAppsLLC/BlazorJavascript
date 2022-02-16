@@ -15,12 +15,6 @@ export const extractProperties = (members: ts.NodeArray<ts.TypeElement>): Proper
             return;
         }
 
-        // FIXME: Ignore properties that are named "prototype" to make our life easier.
-        //        There might be a better way to do this.
-        if (member.name.text === "prototype") {
-            return;
-        }
-
         let isReadonly = false;
 
         if (!!member.modifiers) {

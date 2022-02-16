@@ -1,7 +1,7 @@
 import { TypeInfo } from "./types";
 import { ParsedInfo } from "./parsed";
 import { GlobalVariableInfo } from "./globalvariables";
-import { InterfaceInfo } from "./interfaces";
+import { InterfaceBodyInfo, InterfaceInfo } from "./interfaces";
 import { ConstructorInfo } from "./constructors";
 import { PropertyInfo } from "./properties";
 import { MethodInfo } from "./methods";
@@ -64,44 +64,120 @@ const recursiveCheckForNonSimpleTypeArgument = (result: TypeInfo): boolean => {
     return anyNodeNotSimple;
 };
 
+export const runPostProcessingInterfaceBody = (interfaceInfo: InterfaceBodyInfo): InterfaceBodyInfo => {
+    const postProcessedMethods: MethodInfo[] = [];
+    const postProcessedProperties: PropertyInfo[] = [];
+    const postProcessedConstructors: ConstructorInfo[] = [];
+    const postProcessedIndexers: IndexerInfo[] = [];
+    const postProcessedGetAccessors: GetAccessorInfo[] = [];
+    const postProcessedSetAccessors: SetAccessorInfo[] = [];
+
+    interfaceInfo.constructors.forEach(constructor => {
+        let keepConstructor = true;
+
+        constructor.parameters.forEach(constructorParameter => {
+            if (recursiveCheckForNonSimpleTypeArgument(constructorParameter.type)) {
+                keepConstructor = false;
+            }
+        });
+
+        if (keepConstructor) {
+            postProcessedConstructors.push(constructor);
+        }
+    });
+
+    interfaceInfo.methods.forEach(methodInfo => {
+        let keepMethod = true;
+
+        if (methodInfo.extractTypeParametersResult.anyConstraintsAreNotSimple) {
+            keepMethod = false;
+        }
+        else if (recursiveCheckForNonSimpleTypeArgument(methodInfo.returnType)) {
+            keepMethod = false;
+        }
+        else {
+            methodInfo.parameters.forEach(parameterInfo => {
+                if (recursiveCheckForNonSimpleTypeArgument(parameterInfo.type)) {
+                    keepMethod = false;
+                }
+            });
+        }
+
+        if (keepMethod) {
+            postProcessedMethods.push(methodInfo);
+        }
+    });
+
+    interfaceInfo.properties.forEach(property => {
+        if (recursiveCheckForNonSimpleTypeArgument(property.type)) {
+            return;
+        }
+
+        postProcessedProperties.push(property);
+    });
+
+    interfaceInfo.indexers.forEach(indexer => {
+        if (recursiveCheckForNonSimpleTypeArgument(indexer.indexType)
+            || recursiveCheckForNonSimpleTypeArgument(indexer.returnType)) {
+            return;
+        }
+
+        postProcessedIndexers.push(indexer);
+    });
+
+    interfaceInfo.getAccessors.forEach(getAccessor => {
+        if (recursiveCheckForNonSimpleTypeArgument(getAccessor.returnType)) {
+            return;
+        }
+
+        postProcessedGetAccessors.push(getAccessor);
+    });
+
+    interfaceInfo.setAccessors.forEach(setAccessor => {
+        let keepSetAccessor = true;
+
+        setAccessor.parameters.forEach(parameter => {
+            if (recursiveCheckForNonSimpleTypeArgument(parameter.type)) {
+                keepSetAccessor = false;
+                return;
+            }
+        });
+
+        if (keepSetAccessor) {
+            postProcessedSetAccessors.push(setAccessor);
+        }
+    });
+
+    return {
+        methods: postProcessedMethods,
+        constructors: postProcessedConstructors,
+        properties: postProcessedProperties,
+        indexers: postProcessedIndexers,
+        getAccessors: postProcessedGetAccessors,
+        setAccessors: postProcessedSetAccessors
+    };
+};
+
 export const runPostProcessing = (parsedInfo: ParsedInfo): ParsedInfo => {
     let postProcessedGlobalVariables: GlobalVariableInfo[] = [];
     let postProcessedInterfaces: InterfaceInfo[] = [];
 
     parsedInfo.globalVariables.forEach(globalVariable => {
-        const postProcessedConstructors: ConstructorInfo[] = [];
-        const postProcessedProperties: PropertyInfo[] = [];
+        if (globalVariable.type !== null && recursiveCheckForNonSimpleTypeArgument(globalVariable.type)) {
+            return;
+        }
 
-        globalVariable.constructors.forEach(constructor => {
-            let keepConstructor = true;
+        let postProcessedInlineInterface: InterfaceBodyInfo | null = null;
 
-            constructor.parameters.forEach(constructorParameter => {
-                if (recursiveCheckForNonSimpleTypeArgument(constructorParameter.type)) {
-                    keepConstructor = false;
-                }
-            });
+        if (globalVariable.inlineInterface !== null) {
+            postProcessedInlineInterface = runPostProcessingInterfaceBody(globalVariable.inlineInterface);
+        }
 
-            if (keepConstructor) {
-                postProcessedConstructors.push(constructor);
-            }
-        });
-
-        globalVariable.properties.forEach(property => {
-            if (recursiveCheckForNonSimpleTypeArgument(property.type)) {
-                return;
-            }
-
-            postProcessedProperties.push(property);
-        });
-
-        const postProcessedGlobalVariable: GlobalVariableInfo = {
+        postProcessedGlobalVariables.push({
             name: globalVariable.name,
-            hasPrototype: globalVariable.hasPrototype,
-            constructors: postProcessedConstructors,
-            properties: postProcessedProperties,
-        };
-
-        postProcessedGlobalVariables.push(postProcessedGlobalVariable);
+            type: globalVariable.type,
+            inlineInterface: postProcessedInlineInterface,
+        });
     });
 
     parsedInfo.interfaces.forEach(interfaceInfo => {
@@ -109,86 +185,11 @@ export const runPostProcessing = (parsedInfo: ParsedInfo): ParsedInfo => {
             return;
         }
 
-        const postProcessedMethods: MethodInfo[] = [];
-        const postProcessedProperties: PropertyInfo[] = [];
-
-        interfaceInfo.methods.forEach(methodInfo => {
-            let keepMethod = true;
-
-            if (methodInfo.extractTypeParametersResult.anyConstraintsAreNotSimple) {
-                keepMethod = false;
-            }
-            else if (recursiveCheckForNonSimpleTypeArgument(methodInfo.returnType)) {
-                keepMethod = false;
-            }
-            else {
-                methodInfo.parameters.forEach(parameterInfo => {
-                    if (recursiveCheckForNonSimpleTypeArgument(parameterInfo.type)) {
-                        keepMethod = false;
-                    }
-                });
-            }
-
-            if (keepMethod) {
-                postProcessedMethods.push(methodInfo);
-            }
-        });
-
-        interfaceInfo.properties.forEach(property => {
-            if (recursiveCheckForNonSimpleTypeArgument(property.type)) {
-                return;
-            }
-
-            postProcessedProperties.push(property);
-        });
-
-        const postProcessedIndexers: IndexerInfo[] = [];
-
-        interfaceInfo.indexers.forEach(indexer => {
-            if (recursiveCheckForNonSimpleTypeArgument(indexer.indexType)
-                || recursiveCheckForNonSimpleTypeArgument(indexer.returnType)) {
-                return;
-            }
-
-            postProcessedIndexers.push(indexer);
-        });
-
-        const postProcessedGetAccessors: GetAccessorInfo[] = [];
-
-        interfaceInfo.getAccessors.forEach(getAccessor => {
-            if (recursiveCheckForNonSimpleTypeArgument(getAccessor.returnType)) {
-                return;
-            }
-
-            postProcessedGetAccessors.push(getAccessor);
-        });
-
-        const postProcessedSetAccessors: SetAccessorInfo[] = [];
-
-        interfaceInfo.setAccessors.forEach(setAccessor => {
-            let keepSetAccessor = true;
-
-            setAccessor.parameters.forEach(parameter => {
-                if (recursiveCheckForNonSimpleTypeArgument(parameter.type)) {
-                    keepSetAccessor = false;
-                    return;
-                }
-            });
-
-            if (keepSetAccessor) {
-                postProcessedSetAccessors.push(setAccessor);
-            }
-        });
-
         postProcessedInterfaces.push({
             name: interfaceInfo.name,
-            methods: postProcessedMethods,
             extractTypeParametersResult: interfaceInfo.extractTypeParametersResult,
             extendsList: interfaceInfo.extendsList,
-            properties: postProcessedProperties,
-            indexers: postProcessedIndexers,
-            getAccessors: postProcessedGetAccessors,
-            setAccessors: postProcessedSetAccessors
+            body: runPostProcessingInterfaceBody(interfaceInfo.body)
         });
     });
 

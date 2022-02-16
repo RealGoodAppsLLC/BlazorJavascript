@@ -69,7 +69,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
             stringBuilder.AppendLine(Indent(1) + "{");
 
-            foreach (var methodInfo in interfaceInfo.Methods)
+            foreach (var methodInfo in interfaceInfo.Body.Methods)
             {
                 // FIXME: We are skipping any methods that are not simple enough for a 1 to 1 translation.
                 //        For example, nothing with generics, union types, intersection types, or function parameters.

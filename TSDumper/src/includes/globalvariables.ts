@@ -1,15 +1,12 @@
 import * as ts from "typescript";
-import { ConstructorInfo } from "./constructors";
-import { extractProperties, PropertyInfo } from "./properties";
 import { SourceFile } from "typescript";
-import { extractTypeInfo } from "./types";
-import { extractParameters } from "./parameters";
+import { extractTypeInfo, TypeInfo } from "./types";
+import { InterfaceBodyInfo, extractInterfaceBody } from "./interfaces";
 
 export interface GlobalVariableInfo {
     name: string;
-    hasPrototype: boolean;
-    constructors: ConstructorInfo[];
-    properties: PropertyInfo[];
+    inlineInterface: InterfaceBodyInfo | null;
+    type: TypeInfo | null;
 }
 
 export const extractGlobalVariables = (sourceFile: SourceFile): GlobalVariableInfo[] => {
@@ -23,43 +20,32 @@ export const extractGlobalVariables = (sourceFile: SourceFile): GlobalVariableIn
         statement.declarationList.declarations.forEach(declaration => {
             if (!ts.isVariableDeclaration(declaration)
                 || !declaration.type
-                || !ts.isTypeLiteralNode(declaration.type)
                 || !ts.isIdentifier(declaration.name)) {
                 return;
             }
 
-            let hasPrototype = false;
-
             const declarationName = declaration.name.text;
-            const constructors: ConstructorInfo[] = [];
 
-            declaration.type.members.forEach(member => {
-                if (ts.isPropertySignature(member)
-                    && ts.isIdentifier(member.name)
-                    && member.name.text === "prototype"
-                    && member.type
-                    && ts.isTypeReferenceNode(member.type)
-                    && ts.isIdentifier(member.type.typeName)
-                    && member.type.typeName.text === declarationName) {
-                    hasPrototype = true;
-                    return;
-                }
+            let inlineInterface: InterfaceBodyInfo | null = null;
 
-                if (ts.isConstructSignatureDeclaration(member) && member.type) {
-                    constructors.push({
-                        returnType: extractTypeInfo(member.type),
-                        parameters: extractParameters(member.parameters),
-                    });
+            if (ts.isTypeLiteralNode(declaration.type)) {
+                inlineInterface = extractInterfaceBody(declaration.type.members);
+            }
 
-                    return;
-                }
-            });
+            let type: TypeInfo | null = null;
+
+            if (ts.isTypeReferenceNode(declaration.type)) {
+                type = extractTypeInfo(declaration.type);
+            }
+
+            if (inlineInterface === null && type === null) {
+                return;
+            }
 
             globalVariables.push({
                 name: declarationName,
-                hasPrototype: hasPrototype,
-                constructors: constructors,
-                properties: extractProperties(declaration.type.members),
+                inlineInterface: inlineInterface,
+                type: type,
             });
         });
     });
