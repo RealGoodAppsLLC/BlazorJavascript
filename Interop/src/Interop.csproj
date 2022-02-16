@@ -13,5 +13,12 @@
     <ItemGroup Condition=" '$(TargetFramework)' == 'net6.0' ">
         <PackageReference Include="Microsoft.JSInterop" Version="6.0.*" />
     </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="Javascript\script.js" />
+      <EmbeddedResource Include="Javascript\script.js">
+          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </EmbeddedResource>
+    </ItemGroup>
     
 </Project>
