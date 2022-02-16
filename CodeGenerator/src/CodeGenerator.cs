@@ -118,15 +118,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
             stringBuilder.Append($"{Indent(1)}public interface I{interfaceInfo.Name}");
 
-            if (interfaceInfo.ExtractTypeParametersResult.TypeParameters.Any())
-            {
-                stringBuilder.Append('<');
-
-                stringBuilder.Append(string.Join(", ", interfaceInfo.ExtractTypeParametersResult.TypeParameters
-                    .Select(typeParameter => typeParameter.Name)));
-
-                stringBuilder.Append('>');
-            }
+            stringBuilder.Append(ExtractTypeParametersString(interfaceInfo));
 
             var extendsList = interfaceInfo.ExtendsList
                 .Select(extendTypeInfo => extendTypeInfo)
@@ -138,6 +130,106 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             stringBuilder.Append(Environment.NewLine);
 
             stringBuilder.AppendLine(Indent(1) + "{");
+
+            var methods = GetMethodsFromInterface(interfaceInfo, false, ImmutableList<InterfaceInfo>.Empty);
+
+            foreach (var (_, methodInfo) in methods)
+            {
+                // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
+                stringBuilder.Append(Indent(2));
+                RenderMethodBeginning(stringBuilder, methodInfo, null);
+                stringBuilder.Append(';');
+                stringBuilder.Append(Environment.NewLine);
+            }
+
+            stringBuilder.AppendLine(Indent(1) + "}");
+            stringBuilder.AppendLine("}");
+
+            return stringBuilder.ToString();
+        }
+
+        private static string ExtractTypeParametersString(InterfaceInfo interfaceInfo)
+        {
+            var stringBuilder = new StringBuilder();
+
+            if (interfaceInfo.ExtractTypeParametersResult.TypeParameters.Any())
+            {
+                stringBuilder.Append('<');
+
+                stringBuilder.Append(string.Join(", ", interfaceInfo.ExtractTypeParametersResult.TypeParameters
+                    .Select(typeParameter => typeParameter.Name)));
+
+                stringBuilder.Append('>');
+            }
+
+            return stringBuilder.ToString();
+        }
+
+        private void RenderMethodBeginning(
+            StringBuilder stringBuilder,
+            MethodInfo methodInfo,
+            InterfaceInfo? prefixInterfaceInfo)
+        {
+            stringBuilder.Append(GetRenderedTypeName(methodInfo.ReturnType));
+            stringBuilder.Append(' ');
+
+            if (prefixInterfaceInfo != null)
+            {
+                var typeParametersString = ExtractTypeParametersString(prefixInterfaceInfo);
+                stringBuilder.Append($"I{prefixInterfaceInfo.Name}{typeParametersString}");
+                stringBuilder.Append('.');
+            }
+
+            stringBuilder.Append(methodInfo.GetNameForCSharp());
+
+            stringBuilder.Append('(');
+
+            var isFirst = true;
+
+            foreach (var parameterInfo in methodInfo.Parameters)
+            {
+                if (!isFirst)
+                {
+                    stringBuilder.Append(", ");
+                }
+
+                stringBuilder.Append(GetRenderedTypeName(parameterInfo.Type));
+                stringBuilder.Append(' ');
+                stringBuilder.Append(parameterInfo.GetNameForCSharp());
+                isFirst = false;
+            }
+
+            stringBuilder.Append(')');
+        }
+
+        private ImmutableList<(InterfaceInfo interfaceInfo, MethodInfo MethodInfo)> GetMethodsFromInterface(
+            InterfaceInfo interfaceInfo,
+            bool recursive,
+            ImmutableList<InterfaceInfo> alreadyProcessedInterfaces)
+        {
+            var methods = new List<(InterfaceInfo interfaceInfo, MethodInfo MethodInfo)>();
+
+            if (recursive)
+            {
+                foreach (var extendTypeInfo in interfaceInfo.ExtendsList)
+                {
+                    if (extendTypeInfo.Single == null)
+                    {
+                        continue;
+                    }
+
+                    var extendInterfaceInfo = _parsedInfo.Interfaces.FirstOrDefault(i => i.Name == extendTypeInfo.Single.Name);
+
+                    if (extendInterfaceInfo == null
+                        || alreadyProcessedInterfaces.Any(i => i.Name == extendInterfaceInfo.Name))
+                    {
+                        continue;
+                    }
+
+                    alreadyProcessedInterfaces = alreadyProcessedInterfaces.Add(extendInterfaceInfo);
+                    methods.AddRange(GetMethodsFromInterface(extendInterfaceInfo, true, alreadyProcessedInterfaces));
+                }
+            }
 
             foreach (var methodInfo in interfaceInfo.Body.Methods)
             {
@@ -158,36 +250,10 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                     continue;
                 }
 
-                // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
-                stringBuilder.Append(Indent(2));
-                stringBuilder.Append(GetRenderedTypeName(methodInfo.ReturnType));
-                stringBuilder.Append(' ');
-                stringBuilder.Append(methodInfo.GetNameForCSharp());
-                stringBuilder.Append('(');
-
-                var isFirst = true;
-
-                foreach (var parameterInfo in methodInfo.Parameters)
-                {
-                    if (!isFirst)
-                    {
-                        stringBuilder.Append(", ");
-                    }
-
-                    stringBuilder.Append(GetRenderedTypeName(parameterInfo.Type));
-                    stringBuilder.Append(' ');
-                    stringBuilder.Append(parameterInfo.GetNameForCSharp());
-                    isFirst = false;
-                }
-
-                stringBuilder.Append(");");
-                stringBuilder.Append(Environment.NewLine);
+                methods.Add((interfaceInfo, methodInfo));
             }
 
-            stringBuilder.AppendLine(Indent(1) + "}");
-            stringBuilder.AppendLine("}");
-
-            return stringBuilder.ToString();
+            return methods.ToImmutableList();
         }
 
         private ImmutableList<PropertyInfo> GetPropertiesFromInterfaceRecursively(InterfaceInfo interfaceInfo)
@@ -274,14 +340,33 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
         {
             var stringBuilder = new StringBuilder();
 
+            var typeParametersString = ExtractTypeParametersString(interfaceInfo);
+
             stringBuilder.AppendLine("/// <auto-generated />");
             stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.BuiltIns;");
             stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.Interfaces;");
             stringBuilder.AppendLine();
             stringBuilder.AppendLine("namespace RealGoodApps.BlazorJavascript.Interop.Prototypes");
             stringBuilder.AppendLine("{");
-            stringBuilder.AppendLine($"{Indent(1)}public class {interfaceInfo.Name}Prototype : I{interfaceInfo.Name}, IJSObject");
+            stringBuilder.AppendLine($"{Indent(1)}public class {interfaceInfo.Name}Prototype{typeParametersString} : I{interfaceInfo.Name}{typeParametersString}, IJSObject");
             stringBuilder.AppendLine(Indent(1) + "{");
+
+            var methods = GetMethodsFromInterface(interfaceInfo, true, ImmutableList<InterfaceInfo>.Empty);
+
+            foreach (var (methodInterfaceInfo, methodInfo) in methods)
+            {
+                // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
+                stringBuilder.Append(Indent(2));
+                RenderMethodBeginning(stringBuilder, methodInfo, methodInterfaceInfo);
+                stringBuilder.Append(Environment.NewLine);
+                stringBuilder.Append(Indent(2) + "{");
+                stringBuilder.Append(Environment.NewLine);
+                stringBuilder.Append(Indent(3) + "throw new System.NotImplementedException();");
+                stringBuilder.Append(Environment.NewLine);
+                stringBuilder.Append(Indent(2) + "}");
+                stringBuilder.Append(Environment.NewLine);
+            }
+
             stringBuilder.AppendLine(Indent(1) + "}");
             stringBuilder.AppendLine("}");
 
