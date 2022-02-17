@@ -478,7 +478,22 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 stringBuilder.AppendLine(Indent(2) + "{");
                 stringBuilder.AppendLine(Indent(3) + "get");
                 stringBuilder.AppendLine(Indent(3) + "{");
-                stringBuilder.AppendLine(Indent(4) + "throw new System.NotImplementedException();");
+
+                var returnRenderedTypeName = GetRenderedTypeName(propertyInfo.Type);
+
+                stringBuilder.AppendLine(Indent(4) + $"var propertyObj = this.GetPropertyOfObject(\"{propertyInfo.Name}\");");
+                stringBuilder.AppendLine(Indent(4) + "if (propertyObj == null)");
+                stringBuilder.AppendLine(Indent(4) + "{");
+                stringBuilder.AppendLine(Indent(5) + "return null;");
+                stringBuilder.AppendLine(Indent(4) + "}");
+                stringBuilder.AppendLine();
+                stringBuilder.AppendLine(Indent(4) + $"var propertyAsReturnType = propertyObj as {returnRenderedTypeName};");
+                stringBuilder.AppendLine(Indent(4) + "if (propertyAsReturnType == null)");
+                stringBuilder.AppendLine(Indent(4) + "{");
+                stringBuilder.AppendLine(Indent(5) + "throw new InvalidCastException(\"Something went wrong!\");");
+                stringBuilder.AppendLine(Indent(4) + "}");
+                stringBuilder.AppendLine();
+                stringBuilder.AppendLine(Indent(4) + "return propertyAsReturnType;");
                 stringBuilder.AppendLine(Indent(3) + "}");
 
                 if (!propertyInfo.IsReadonly)
