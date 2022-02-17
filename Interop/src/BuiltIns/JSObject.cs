@@ -48,6 +48,7 @@ namespace RealGoodApps.BlazorJavascript.Interop.BuiltIns
                 8 => new JSFunction(jsInProcessRuntime, objectReferenceNotNull),
                 9 => new WindowPrototype(jsInProcessRuntime, objectReferenceNotNull),
                 10 => new JSBoolean(jsInProcessRuntime, objectReferenceNotNull),
+                11 => new HTMLBodyElementPrototype(jsInProcessRuntime, objectReferenceNotNull),
                 _ => new JSObject(jsInProcessRuntime, objectReferenceNotNull),
             };
         }

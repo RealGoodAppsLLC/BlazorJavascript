@@ -14,6 +14,7 @@ if (typeof window['blazorJavascript'] === 'undefined') {
     blazorJavascript.typeFunction = 8;
     blazorJavascript.typeWindow = 9;
     blazorJavascript.typeBoolean = 10;
+    blazorJavascript.typeHTMLBodyElement = 11;
 
     blazorJavascript.checkIsNull = function(val) {
         return val === null;
@@ -139,6 +140,10 @@ if (typeof window['blazorJavascript'] === 'undefined') {
 
             if (chainPrototype === HTMLButtonElement.prototype) {
                 return blazorJavascript.typeHTMLButtonElement;
+            }
+
+            if (chainPrototype === HTMLBodyElement.prototype) {
+                return blazorJavascript.typeHTMLBodyElement;
             }
 
             if (chainPrototype === Event.prototype) {
