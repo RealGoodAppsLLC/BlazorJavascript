@@ -77,13 +77,16 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             // FIXME: Right now, we know the globalThis is a `Window`, but we might not want to assume this
             //        in the future, especially if this code is used to generate bindings for libraries.
             var windowInterface = _parsedInfo.Interfaces.First(interfaceInfo => interfaceInfo.Name == "Window");
-            var allWindowProperties = GetPropertiesFromInterfaceRecursively(windowInterface);
+            var allWindowPropertyDetails = GetPropertiesFromInterface(
+                windowInterface,
+                true,
+                ImmutableList.Create<InterfaceInfo>());
             var allWindowGetters = GetGetAccessorsFromInterfaceRecursively(windowInterface);
 
             foreach (var globalVariableInfo in _parsedInfo.GlobalVariables)
             {
                 // HACK: Let's exclude anything that was already defined in the `Window` interface.
-                if (allWindowProperties.Any(property => property.Name == globalVariableInfo.Name)
+                if (allWindowPropertyDetails.Any(propertyDetails => propertyDetails.PropertyInfo.Name == globalVariableInfo.Name)
                     || allWindowGetters.Any(getAccessor => getAccessor.Name == globalVariableInfo.Name))
                 {
                     continue;
@@ -131,7 +134,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
             stringBuilder.AppendLine(Indent(1) + "{");
 
-            var methods = GetMethodsFromInterface(interfaceInfo, false, ImmutableList<InterfaceInfo>.Empty);
+            var methods = GetMethodsFromInterface(interfaceInfo, false, ImmutableList.Create<InterfaceInfo>());
 
             foreach (var (_, methodInfo) in methods)
             {
@@ -139,6 +142,26 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 stringBuilder.Append(Indent(2));
                 RenderMethodBeginning(stringBuilder, methodInfo, null);
                 stringBuilder.Append(';');
+                stringBuilder.Append(Environment.NewLine);
+            }
+
+            var properties = GetPropertiesFromInterface(
+                interfaceInfo,
+                false,
+                ImmutableList.Create<InterfaceInfo>());
+
+            foreach (var (_, propertyInfo) in properties)
+            {
+                // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
+                stringBuilder.Append(Indent(2));
+                RenderPropertyBeginning(stringBuilder, propertyInfo, null);
+                stringBuilder.Append(" { get; ");
+                if (!propertyInfo.IsReadonly)
+                {
+                    stringBuilder.Append("set; ");
+                }
+
+                stringBuilder.Append('}');
                 stringBuilder.Append(Environment.NewLine);
             }
 
@@ -202,6 +225,24 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             stringBuilder.Append(')');
         }
 
+        private void RenderPropertyBeginning(
+            StringBuilder stringBuilder,
+            PropertyInfo propertyInfo,
+            InterfaceInfo? prefixInterfaceInfo)
+        {
+            stringBuilder.Append(GetRenderedTypeName(propertyInfo.Type));
+            stringBuilder.Append(' ');
+
+            if (prefixInterfaceInfo != null)
+            {
+                var typeParametersString = ExtractTypeParametersString(prefixInterfaceInfo);
+                stringBuilder.Append($"I{prefixInterfaceInfo.Name}{typeParametersString}");
+                stringBuilder.Append('.');
+            }
+
+            stringBuilder.Append(propertyInfo.GetNameForCSharp());
+        }
+
         private ImmutableList<(InterfaceInfo interfaceInfo, MethodInfo MethodInfo)> GetMethodsFromInterface(
             InterfaceInfo interfaceInfo,
             bool recursive,
@@ -256,29 +297,51 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             return methods.ToImmutableList();
         }
 
-        private ImmutableList<PropertyInfo> GetPropertiesFromInterfaceRecursively(InterfaceInfo interfaceInfo)
+        private ImmutableList<(InterfaceInfo interfaceInfo, PropertyInfo PropertyInfo)> GetPropertiesFromInterface(
+            InterfaceInfo interfaceInfo,
+            bool recursive,
+            ImmutableList<InterfaceInfo> alreadyProcessedInterfaces)
         {
-            var allProperties = new List<PropertyInfo>();
+            var properties = new List<(InterfaceInfo interfaceInfo, PropertyInfo PropertyInfo)>();
 
-            foreach (var extendInfo in interfaceInfo.ExtendsList)
+            if (recursive)
             {
-                if (extendInfo.Single == null)
+                foreach (var extendTypeInfo in interfaceInfo.ExtendsList)
                 {
-                    continue;
+                    if (extendTypeInfo.Single == null)
+                    {
+                        continue;
+                    }
+
+                    var extendInterfaceInfo = _parsedInfo.Interfaces.FirstOrDefault(i => i.Name == extendTypeInfo.Single.Name);
+
+                    if (extendInterfaceInfo == null
+                        || alreadyProcessedInterfaces.Any(i => i.Name == extendInterfaceInfo.Name))
+                    {
+                        continue;
+                    }
+
+                    alreadyProcessedInterfaces = alreadyProcessedInterfaces.Add(extendInterfaceInfo);
+                    properties.AddRange(GetPropertiesFromInterface(extendInterfaceInfo, true, alreadyProcessedInterfaces));
                 }
-
-                var extendInterfaceInfo = _parsedInfo.Interfaces.FirstOrDefault(i => i.Name == extendInfo.Single.Name);
-
-                if (extendInterfaceInfo == null)
-                {
-                    continue;
-                }
-
-                allProperties.AddRange(GetPropertiesFromInterfaceRecursively(extendInterfaceInfo));
             }
 
-            allProperties.AddRange(interfaceInfo.Body.Properties);
-            return allProperties.ToImmutableList();
+            if (!interfaceInfo.ExtractTypeParametersResult.TypeParameters.Any())
+            {
+                foreach (var propertyInfo in interfaceInfo.Body.Properties)
+                {
+                    // FIXME: We are skipping any properties that are not simple enough for a 1 to 1 translation.
+                    //        For example, nothing with generics, union types, intersection types, or function parameters.
+                    if (IsFinalTypeSimpleEnoughToRender(propertyInfo.Type))
+                    {
+                        continue;
+                    }
+
+                    properties.Add((interfaceInfo, propertyInfo));
+                }
+            }
+
+            return properties.ToImmutableList();
         }
 
         private ImmutableList<GetAccessorInfo> GetGetAccessorsFromInterfaceRecursively(InterfaceInfo interfaceInfo)
@@ -402,6 +465,32 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
                 stringBuilder.Append(Indent(2) + "}");
                 stringBuilder.Append(Environment.NewLine);
+            }
+
+            var properties = GetPropertiesFromInterface(interfaceInfo, true, ImmutableList.Create<InterfaceInfo>());
+
+            foreach (var (propertyInterfaceInfo, propertyInfo) in properties)
+            {
+                // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
+                stringBuilder.Append(Indent(2));
+                RenderPropertyBeginning(stringBuilder, propertyInfo, propertyInterfaceInfo);
+                stringBuilder.Append(Environment.NewLine);
+                stringBuilder.AppendLine(Indent(2) + "{");
+                stringBuilder.AppendLine(Indent(3) + "get");
+                stringBuilder.AppendLine(Indent(3) + "{");
+                stringBuilder.AppendLine(Indent(4) + "throw new System.NotImplementedException();");
+                stringBuilder.AppendLine(Indent(3) + "}");
+
+                if (!propertyInfo.IsReadonly)
+                {
+                    stringBuilder.AppendLine();
+                    stringBuilder.AppendLine(Indent(3) + "set");
+                    stringBuilder.AppendLine(Indent(3) + "{");
+                    stringBuilder.AppendLine(Indent(4) + "throw new System.NotImplementedException();");
+                    stringBuilder.AppendLine(Indent(3) + "}");
+                }
+
+                stringBuilder.AppendLine(Indent(2) + "}");
             }
 
             stringBuilder.AppendLine(Indent(1) + "}");

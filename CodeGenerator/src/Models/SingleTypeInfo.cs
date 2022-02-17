@@ -12,6 +12,11 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator.Models
     {
         public string? GetNameForCSharp(ImmutableList<InterfaceInfo> interfaces)
         {
+            if (this.Name == "undefined")
+            {
+                return "JSUndefined";
+            }
+
             if (this.Name == "boolean")
             {
                 return "JSBoolean";
@@ -35,6 +40,12 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator.Models
             if (this.Name == "void")
             {
                 return "void";
+            }
+
+            // FIXME: This feel kind of hacky. I think this should be moved higher up.
+            if (this.Name == "null")
+            {
+                return "IJSObject";
             }
 
             var isInterface = interfaces.Any(interfaceInfo => this.Name == interfaceInfo.Name);
