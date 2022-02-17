@@ -4,6 +4,9 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
     {
         public static string SanitizeName(string name, bool applyCamelCase)
         {
+            // FIXME: This is hacky, but it works.
+            name = name.Replace("$", "moneySign");
+
             if (applyCamelCase)
             {
                 var firstLetterUppercase = name[..1].ToUpperInvariant();
