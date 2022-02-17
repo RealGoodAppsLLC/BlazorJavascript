@@ -27,7 +27,7 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
         public static void SetPropertyOfObject(
             this IJSObject self,
             string propertyName,
-            object? value)
+            IJSObject? value)
         {
             self.Runtime.InvokeVoid(
                 "__blazorJavascript_setterFunction",

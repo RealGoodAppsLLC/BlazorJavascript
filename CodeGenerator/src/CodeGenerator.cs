@@ -501,7 +501,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                     stringBuilder.AppendLine();
                     stringBuilder.AppendLine(Indent(3) + "set");
                     stringBuilder.AppendLine(Indent(3) + "{");
-                    stringBuilder.AppendLine(Indent(4) + "throw new System.NotImplementedException();");
+                    stringBuilder.AppendLine(Indent(4) + $"this.SetPropertyOfObject(\"{propertyInfo.Name}\", value);");
                     stringBuilder.AppendLine(Indent(3) + "}");
                 }
 
