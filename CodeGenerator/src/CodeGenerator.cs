@@ -25,6 +25,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
                 var interfaceOutputPath = Path.Combine(
                     _outputDirectory,
+                    "Interfaces",
                     $"I{interfaceInfo.Name}.cs");
 
                 if (File.Exists(interfaceOutputPath))
@@ -63,6 +64,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
                     var prototypeOutputPath = Path.Combine(
                         _outputDirectory,
+                        "Prototypes",
                         $"{interfaceInfo.Name}Prototype.cs");
 
                     if (File.Exists(prototypeOutputPath))
@@ -96,6 +98,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
                 var globalVariableOutputPath = Path.Combine(
                     _outputDirectory,
+                    "Globals",
                     $"{globalVariableInfo.Name}Global.cs");
 
                 if (File.Exists(globalVariableOutputPath))
