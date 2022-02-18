@@ -16,12 +16,12 @@
 
         var window = jsInProcessRuntime.GetWindow();
 
-        var body = window.Document.Body;
+        var body = window.document.body;
         var appendChildFunction = body.GetPropertyOfObject("appendChild") as JSFunction;
-        var newElement = window.Document.CreateElement(jsInProcessRuntime.CreateString("button"), null) as IHTMLButtonElement;
+        var newElement = window.document.createElement(jsInProcessRuntime.CreateString("button"), null) as IHTMLButtonElement;
         appendChildFunction?.Invoke(body, newElement);
-        newElement.Disabled = jsInProcessRuntime.CreateBoolean(true);
-        newElement.InnerText = jsInProcessRuntime.CreateString("My Button");
-        window.Document.Title = jsInProcessRuntime.CreateString("Well hello, there!");
+        newElement.disabled = jsInProcessRuntime.CreateBoolean(true);
+        newElement.innerText = jsInProcessRuntime.CreateString("My Button");
+        window.document.title = jsInProcessRuntime.CreateString("Well hello, there!");
     }
 }
