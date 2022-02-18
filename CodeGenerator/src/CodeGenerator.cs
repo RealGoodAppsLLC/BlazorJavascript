@@ -125,6 +125,27 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 }
 
                 File.WriteAllText(globalVariableOutputPath, contents);
+
+                if (globalVariableInfo.InlineInterface != null)
+                {
+                    var inlineInterfaceContents = GenerateInterfaceFileContents(
+                        $"InlineInterfaceFor{globalVariableInfo.Name}",
+                        null,
+                        ImmutableList.Create<TypeInfo>(),
+                        globalVariableInfo.InlineInterface);
+
+                    var inlineInterfaceOutputPath = Path.Combine(
+                        _outputDirectory,
+                        "Interfaces",
+                        $"IInlineInterfaceFor{globalVariableInfo.Name}.cs");
+
+                    if (File.Exists(inlineInterfaceOutputPath))
+                    {
+                        throw new Exception($"File already exists: {inlineInterfaceOutputPath}");
+                    }
+
+                    File.WriteAllText(inlineInterfaceOutputPath, inlineInterfaceContents);
+                }
             }
 
             var javascriptContents = GenerateJavascriptFileContents(prototypes.ToImmutableList());
@@ -611,11 +632,20 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 {
                     fullName.Append('<');
 
+                    var isFirst = true;
+
                     foreach (var typeParameter in typeAsInterface.ExtractTypeParametersResult.TypeParameters)
                     {
+                        if (!isFirst)
+                        {
+                            fullName.Append(", ");
+                        }
+
                         fullName.Append(typeParameter.Default == null
                             ? "IJSObject"
                             : GetRenderedTypeName(typeParameter.Default));
+
+                        isFirst = false;
                     }
 
                     fullName.Append('>');
