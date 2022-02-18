@@ -61,6 +61,11 @@ namespace RealGoodApps.BlazorJavascript.Interop.BuiltIns
             return this.ConvertToValue<int>();
         }
 
+        public long ConvertToDotNetLong()
+        {
+            return this.ConvertToValue<long>();
+        }
+
         public bool EqualsNumber(JSNumber? other)
         {
             if (ReferenceEquals(null, other))
