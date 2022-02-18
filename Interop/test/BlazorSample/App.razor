@@ -1,5 +1,6 @@
 @using RealGoodApps.BlazorJavascript.Interop.BlazorSample.Views
 @namespace RealGoodApps.BlazorJavascript.Interop.BlazorSample
+@inject IJSRuntime _jsRuntime
 
 <Router AppAssembly="@typeof(Program).Assembly">
     <Found Context="routeData">
@@ -11,3 +12,17 @@
         </LayoutView>
     </NotFound>
 </Router>
+
+@code {
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        if (_jsRuntime is not IJSInProcessRuntime jsInProcessRuntime)
+        {
+            throw new InvalidCastException("The JS runtime must be in-process.");
+        }
+
+        BlazorJavascriptInitialization.Initialize(jsInProcessRuntime);
+    }
+}

@@ -87,6 +87,10 @@ if (typeof window['blazorJavascript'] === 'undefined') {
         return Number.isInteger(blazorJavascript.unwrap(val));
     };
 
+    blazorJavascript.getWindow = function() {
+        return blazorJavascript.wrapForInterop(window);
+    };
+
     blazorJavascript.wrapForInterop = function(result) {
         if (blazorJavascript.isInteropWrapped(result)) {
             return result;
@@ -272,4 +276,5 @@ if (typeof window['blazorJavascript'] === 'undefined') {
     }
 
     window.BlazorJavascript = blazorJavascript;
+    console.log("BlazorJavascript initialized!");
 }

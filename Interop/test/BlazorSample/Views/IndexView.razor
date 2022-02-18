@@ -1,6 +1,7 @@
 @page "/"
 @using RealGoodApps.BlazorJavascript.Interop.Extensions
 @using RealGoodApps.BlazorJavascript.Interop.Interfaces
+@using RealGoodApps.BlazorJavascript.Interop.BuiltIns
 @inject IJSRuntime _jsRuntime
 
 <button @onclick="Print">Print</button>
@@ -13,23 +14,14 @@
             return;
         }
 
-        BlazorJavascriptInitialization.Initialize(jsInProcessRuntime);
-        var window = jsInProcessRuntime.GetGlobalObjectByName<IWindow>("self");
+        var window = jsInProcessRuntime.GetWindow();
 
-        if (window == null)
-        {
-            return;
-        }
-
-        var nan = jsInProcessRuntime.CreateNaN();
-        var pInf = jsInProcessRuntime.CreatePositiveInfinity();
-        var nInf = jsInProcessRuntime.CreateNegativeInfinity();
-        var d = jsInProcessRuntime.CreateNumberFromDouble(123);
-        var i = jsInProcessRuntime.CreateNumberFromInt(123);
-
-        foreach (var num in new[] { nan, pInf, nInf, d, i })
-        {
-            window.Alert(jsInProcessRuntime.CreateString($"NaN: {num.IsNaN()}, +I: {num.IsPositiveInfinity()}, -I: {num.IsNegativeInfinity()}, I: {num.IsInfinity()}"));
-        }
+        var body = window.Document.Body;
+        var appendChildFunction = body.GetPropertyOfObject("appendChild") as JSFunction;
+        var newElement = window.Document.CreateElement(jsInProcessRuntime.CreateString("button"), null) as IHTMLButtonElement;
+        appendChildFunction?.Invoke(body, newElement);
+        newElement.Disabled = jsInProcessRuntime.CreateBoolean(true);
+        newElement.InnerText = jsInProcessRuntime.CreateString("My Button");
+        window.Document.Title = jsInProcessRuntime.CreateString("Well hello, there!");
     }
 }

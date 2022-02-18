@@ -1,11 +1,25 @@
 using System;
 using Microsoft.JSInterop;
 using RealGoodApps.BlazorJavascript.Interop.BuiltIns;
+using RealGoodApps.BlazorJavascript.Interop.Interfaces;
 
 namespace RealGoodApps.BlazorJavascript.Interop.Extensions
 {
     public static class IJSInProcessRuntimeExtensions
     {
+        public static IWindow GetWindow(this IJSInProcessRuntime jsRuntime)
+        {
+            var objectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_getWindow");
+            var jsObject = JSObject.FromRuntimeObjectReference(jsRuntime, objectReference);
+
+            if (jsObject is not IWindow window)
+            {
+                throw new InvalidCastException("The get window method did not return an IWindow.");
+            }
+
+            return window;
+        }
+
         public static IJSObject? GetGlobalObjectByName(
             this IJSInProcessRuntime jsRuntime,
             string identifier)
