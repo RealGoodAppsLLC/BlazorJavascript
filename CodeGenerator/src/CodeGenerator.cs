@@ -24,7 +24,11 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
             foreach (var interfaceInfo in _parsedInfo.Interfaces)
             {
-                var contents = GenerateInterfaceFileContents(interfaceInfo);
+                var contents = GenerateInterfaceFileContents(
+                    interfaceInfo.Name,
+                    interfaceInfo.ExtractTypeParametersResult,
+                    interfaceInfo.ExtendsList,
+                    interfaceInfo.Body);
 
                 var interfaceOutputPath = Path.Combine(
                     _outputDirectory,
@@ -152,7 +156,11 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             File.WriteAllText(objectFactoryOutputPath, objectFactoryContents);
         }
 
-        private string GenerateInterfaceFileContents(InterfaceInfo interfaceInfo)
+        private string GenerateInterfaceFileContents(
+            string interfaceName,
+            ExtractTypeParametersResult? extractTypeParametersResult,
+            ImmutableList<TypeInfo> interfaceExtendsList,
+            InterfaceBodyInfo interfaceBodyInfo)
         {
             var stringBuilder = new StringBuilder();
 
@@ -164,11 +172,14 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             stringBuilder.AppendLine("namespace RealGoodApps.BlazorJavascript.Interop.Interfaces");
             stringBuilder.AppendLine("{");
 
-            stringBuilder.Append($"{Indent(1)}public interface I{interfaceInfo.Name}");
+            stringBuilder.Append($"{Indent(1)}public interface I{interfaceName}");
 
-            stringBuilder.Append(ExtractTypeParametersString(interfaceInfo));
+            if (extractTypeParametersResult != null)
+            {
+                stringBuilder.Append(ExtractTypeParametersString(extractTypeParametersResult));
+            }
 
-            var extendsList = interfaceInfo.ExtendsList
+            var extendsList = interfaceExtendsList
                 .Select(extendTypeInfo => extendTypeInfo)
                 .Where(extendTypeInfo => extendTypeInfo.Single != null)
                 .Select(GetRenderedTypeName)
@@ -179,9 +190,9 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
             stringBuilder.AppendLine(Indent(1) + "{");
 
-            var methods = GetMethodsFromInterface(interfaceInfo, false, ImmutableList.Create<InterfaceInfo>());
+            var methods = GetMethodsFromInterfaceBody(interfaceBodyInfo);
 
-            foreach (var (_, methodInfo) in methods)
+            foreach (var methodInfo in methods)
             {
                 // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
                 stringBuilder.Append(Indent(2));
@@ -190,12 +201,11 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 stringBuilder.Append(Environment.NewLine);
             }
 
-            var properties = GetPropertiesFromInterface(
-                interfaceInfo,
-                false,
-                ImmutableList.Create<InterfaceInfo>());
+            var properties = GetPropertiesFromInterfaceBody(
+                interfaceBodyInfo,
+                extractTypeParametersResult);
 
-            foreach (var (_, propertyInfo) in properties)
+            foreach (var propertyInfo in properties)
             {
                 // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
                 stringBuilder.Append(Indent(2));
@@ -216,15 +226,15 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             return stringBuilder.ToString();
         }
 
-        private static string ExtractTypeParametersString(InterfaceInfo interfaceInfo)
+        private static string ExtractTypeParametersString(ExtractTypeParametersResult extractTypeParametersResult)
         {
             var stringBuilder = new StringBuilder();
 
-            if (interfaceInfo.ExtractTypeParametersResult.TypeParameters.Any())
+            if (extractTypeParametersResult.TypeParameters.Any())
             {
                 stringBuilder.Append('<');
 
-                stringBuilder.Append(string.Join(", ", interfaceInfo.ExtractTypeParametersResult.TypeParameters
+                stringBuilder.Append(string.Join(", ", extractTypeParametersResult.TypeParameters
                     .Select(typeParameter => typeParameter.Name)));
 
                 stringBuilder.Append('>');
@@ -260,7 +270,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
             if (prefixInterfaceInfo != null)
             {
-                var typeParametersString = ExtractTypeParametersString(prefixInterfaceInfo);
+                var typeParametersString = ExtractTypeParametersString(prefixInterfaceInfo.ExtractTypeParametersResult);
                 stringBuilder.Append($"I{prefixInterfaceInfo.Name}{typeParametersString}");
                 stringBuilder.Append('.');
             }
@@ -297,7 +307,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
             if (prefixInterfaceInfo != null)
             {
-                var typeParametersString = ExtractTypeParametersString(prefixInterfaceInfo);
+                var typeParametersString = ExtractTypeParametersString(prefixInterfaceInfo.ExtractTypeParametersResult);
                 stringBuilder.Append($"I{prefixInterfaceInfo.Name}{typeParametersString}");
                 stringBuilder.Append('.');
             }
@@ -334,27 +344,11 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 }
             }
 
-            foreach (var methodInfo in interfaceInfo.Body.Methods)
-            {
-                // FIXME: We are skipping any methods that are not simple enough for a 1 to 1 translation.
-                //        For example, nothing with generics, union types, intersection types, or function parameters.
-                if (methodInfo.ExtractTypeParametersResult.TypeParameters.Any())
-                {
-                    continue;
-                }
+            var bodyMethods = GetMethodsFromInterfaceBody(interfaceInfo.Body);
 
-                if (IsFinalTypeSimpleEnoughToRender(methodInfo.ReturnType))
-                {
-                    continue;
-                }
-
-                if (methodInfo.Parameters.Any(parameterInfo => IsFinalTypeSimpleEnoughToRender(parameterInfo.Type)))
-                {
-                    continue;
-                }
-
-                methods.Add((interfaceInfo, methodInfo));
-            }
+            methods.AddRange(bodyMethods
+                .Select(methodInfo => (interfaceInfo, methodInfo))
+                .ToImmutableList());
 
             return methods.ToImmutableList();
         }
@@ -388,20 +382,14 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 }
             }
 
-            if (!interfaceInfo.ExtractTypeParametersResult.TypeParameters.Any())
-            {
-                foreach (var propertyInfo in interfaceInfo.Body.Properties)
-                {
-                    // FIXME: We are skipping any properties that are not simple enough for a 1 to 1 translation.
-                    //        For example, nothing with generics, union types, intersection types, or function parameters.
-                    if (IsFinalTypeSimpleEnoughToRender(propertyInfo.Type))
-                    {
-                        continue;
-                    }
 
-                    properties.Add((interfaceInfo, propertyInfo));
-                }
-            }
+            var bodyProperties = GetPropertiesFromInterfaceBody(
+                interfaceInfo.Body,
+                interfaceInfo.ExtractTypeParametersResult);
+
+            properties.AddRange(bodyProperties
+                .Select(propertyInfo => (interfaceInfo, propertyInfo))
+                .ToImmutableList());
 
             return properties.ToImmutableList();
         }
@@ -465,7 +453,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
         {
             var stringBuilder = new StringBuilder();
 
-            var typeParametersString = ExtractTypeParametersString(interfaceInfo);
+            var typeParametersString = ExtractTypeParametersString(interfaceInfo.ExtractTypeParametersResult);
 
             stringBuilder.AppendLine("/// <auto-generated />");
             stringBuilder.AppendLine("using System;");
@@ -751,6 +739,35 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             return stringBuilder.ToString();
         }
 
+        private ImmutableList<MethodInfo> GetMethodsFromInterfaceBody(InterfaceBodyInfo interfaceBodyInfo)
+        {
+            var methods = new List<MethodInfo>();
+
+            foreach (var methodInfo in interfaceBodyInfo.Methods)
+            {
+                // FIXME: We are skipping any methods that are not simple enough for a 1 to 1 translation.
+                //        For example, nothing with generics, union types, intersection types, or function parameters.
+                if (methodInfo.ExtractTypeParametersResult.TypeParameters.Any())
+                {
+                    continue;
+                }
+
+                if (IsFinalTypeSimpleEnoughToRender(methodInfo.ReturnType))
+                {
+                    continue;
+                }
+
+                if (methodInfo.Parameters.Any(parameterInfo => IsFinalTypeSimpleEnoughToRender(parameterInfo.Type)))
+                {
+                    continue;
+                }
+
+                methods.Add(methodInfo);
+            }
+
+            return methods.ToImmutableList();
+        }
+
         public string GenerateObjectFactoryFileContents(ImmutableList<(InterfaceInfo InterfaceInfo, GlobalVariableInfo GlobalVariableInfo)> prototypes)
         {
             var stringBuilder = new StringBuilder();
@@ -801,6 +818,32 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             stringBuilder.AppendLine("}");
 
             return stringBuilder.ToString();
+        }
+
+        private ImmutableList<PropertyInfo> GetPropertiesFromInterfaceBody(
+            InterfaceBodyInfo interfaceBodyInfo,
+            ExtractTypeParametersResult? extractTypeParametersResult)
+        {
+            if (extractTypeParametersResult != null && extractTypeParametersResult.TypeParameters.Any())
+            {
+                return ImmutableList.Create<PropertyInfo>();
+            }
+
+            var properties = new List<PropertyInfo>();
+
+            foreach (var propertyInfo in interfaceBodyInfo.Properties)
+            {
+                // FIXME: We are skipping any properties that are not simple enough for a 1 to 1 translation.
+                //        For example, nothing with generics, union types, intersection types, or function parameters.
+                if (IsFinalTypeSimpleEnoughToRender(propertyInfo.Type))
+                {
+                    continue;
+                }
+
+                properties.Add(propertyInfo);
+            }
+
+            return properties.ToImmutableList();
         }
     }
 }
