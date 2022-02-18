@@ -3,18 +3,9 @@ if (typeof window['blazorJavascript'] === 'undefined') {
 
     blazorJavascript.interopMarkerSymbol = Symbol();
 
-    blazorJavascript.typeNull = 0;
-    blazorJavascript.typeUndefined = 1;
-    blazorJavascript.typeNumber = 2;
-    blazorJavascript.typeString = 3;
-    blazorJavascript.typeHTMLButtonElement = 4;
-    blazorJavascript.typeEvent = 5;
-    blazorJavascript.typeObject = 6;
-    blazorJavascript.typeDocument = 7;
-    blazorJavascript.typeFunction = 8;
-    blazorJavascript.typeWindow = 9;
-    blazorJavascript.typeBoolean = 10;
-    blazorJavascript.typeHTMLBodyElement = 11;
+    blazorJavascript.obtainPrototype = function(o) {
+        console.error("BlazorJavascript initialization error, you may be calling too early!")
+    };
 
     blazorJavascript.checkIsNull = function(val) {
         return val === null;
@@ -120,62 +111,6 @@ if (typeof window['blazorJavascript'] === 'undefined') {
         }
 
         return o;
-    };
-
-    blazorJavascript.obtainPrototype = function(o) {
-        let p = blazorJavascript.unwrap(o);
-
-        if (p === null) {
-            return blazorJavascript.typeNull;
-        }
-
-        if (p === undefined) {
-            return blazorJavascript.typeUndefined;
-        }
-
-        const chain = blazorJavascript.getPrototypeChain(p);
-
-        for (let prototypeIndex = 0; prototypeIndex < chain.length; prototypeIndex++) {
-            let chainPrototype = chain[prototypeIndex];
-
-            if (chainPrototype === Window.prototype) {
-                return blazorJavascript.typeWindow;
-            }
-
-            if (chainPrototype === HTMLButtonElement.prototype) {
-                return blazorJavascript.typeHTMLButtonElement;
-            }
-
-            if (chainPrototype === HTMLBodyElement.prototype) {
-                return blazorJavascript.typeHTMLBodyElement;
-            }
-
-            if (chainPrototype === Event.prototype) {
-                return blazorJavascript.typeEvent;
-            }
-
-            if (chainPrototype === String.prototype) {
-                return blazorJavascript.typeString;
-            }
-
-            if (chainPrototype === Number.prototype) {
-                return blazorJavascript.typeNumber;
-            }
-
-            if (chainPrototype === Boolean.prototype) {
-                return blazorJavascript.typeBoolean;
-            }
-
-            if (chainPrototype === Document.prototype) {
-                return blazorJavascript.typeDocument;
-            }
-
-            if (chainPrototype === Function.prototype) {
-                return blazorJavascript.typeFunction;
-            }
-        }
-
-        return blazorJavascript.typeObject;
     };
 
     blazorJavascript.getterFunction = function (o, k) {

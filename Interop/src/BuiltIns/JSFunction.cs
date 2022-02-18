@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.JSInterop;
 using RealGoodApps.BlazorJavascript.Interop.Extensions;
+using RealGoodApps.BlazorJavascript.Interop.Factories;
 
 namespace RealGoodApps.BlazorJavascript.Interop.BuiltIns
 {
@@ -36,7 +37,7 @@ namespace RealGoodApps.BlazorJavascript.Interop.BuiltIns
             }
 
             var result = Runtime.Invoke<IJSObjectReference>("__blazorJavascript_invokeFunction", allParams.ToArray());
-            return JSObject.FromRuntimeObjectReference(Runtime, result);
+            return JSObjectFactory.FromRuntimeObjectReference(Runtime, result);
         }
     }
 }

@@ -1,5 +1,6 @@
 using Microsoft.JSInterop;
 using RealGoodApps.BlazorJavascript.Interop.BuiltIns;
+using RealGoodApps.BlazorJavascript.Interop.Factories;
 
 namespace RealGoodApps.BlazorJavascript.Interop.Extensions
 {
@@ -15,7 +16,7 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
             }
 
             var returnValue = self.Runtime.Invoke<IJSObjectReference?>("__blazorJavascript_getterFunction", self.ObjectReference, propertyName);
-            return JSObject.FromRuntimeObjectReference(self.Runtime, returnValue);
+            return JSObjectFactory.FromRuntimeObjectReference(self.Runtime, returnValue);
         }
 
         public static TValue? ConvertToValue<TValue>(

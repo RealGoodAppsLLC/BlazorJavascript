@@ -1,6 +1,7 @@
 using System;
 using Microsoft.JSInterop;
 using RealGoodApps.BlazorJavascript.Interop.BuiltIns;
+using RealGoodApps.BlazorJavascript.Interop.Factories;
 using RealGoodApps.BlazorJavascript.Interop.Interfaces;
 
 namespace RealGoodApps.BlazorJavascript.Interop.Extensions
@@ -10,7 +11,7 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
         public static IWindow GetWindow(this IJSInProcessRuntime jsRuntime)
         {
             var objectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_getWindow");
-            var jsObject = JSObject.FromRuntimeObjectReference(jsRuntime, objectReference);
+            var jsObject = JSObjectFactory.FromRuntimeObjectReference(jsRuntime, objectReference);
 
             if (jsObject is not IWindow window)
             {
@@ -25,7 +26,7 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
             string identifier)
         {
             var objectReference = jsRuntime.Invoke<IJSObjectReference?>("eval", identifier);
-            return JSObject.FromRuntimeObjectReference(jsRuntime, objectReference);
+            return JSObjectFactory.FromRuntimeObjectReference(jsRuntime, objectReference);
         }
 
         public static TPrototype? GetGlobalObjectByName<TPrototype>(
@@ -42,14 +43,14 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
             string? stringValue)
         {
             var stringObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructString", stringValue);
-            var jsObject = JSObject.FromRuntimeObjectReference(jsRuntime, stringObjectReference);
+            var jsObject = JSObjectFactory.FromRuntimeObjectReference(jsRuntime, stringObjectReference);
             return jsObject as JSString;
         }
 
         public static JSNumber CreatePositiveInfinity(this IJSInProcessRuntime jsRuntime)
         {
             var infinityObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructPositiveInfinity");
-            var jsObject = JSObject.FromRuntimeObjectReference(jsRuntime, infinityObjectReference);
+            var jsObject = JSObjectFactory.FromRuntimeObjectReference(jsRuntime, infinityObjectReference);
 
             if (jsObject is not JSNumber jsNumber)
             {
@@ -62,7 +63,7 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
         public static JSNumber CreateNegativeInfinity(this IJSInProcessRuntime jsRuntime)
         {
             var infinityObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructNegativeInfinity");
-            var jsObject = JSObject.FromRuntimeObjectReference(jsRuntime, infinityObjectReference);
+            var jsObject = JSObjectFactory.FromRuntimeObjectReference(jsRuntime, infinityObjectReference);
 
             if (jsObject is not JSNumber jsNumber)
             {
@@ -75,7 +76,7 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
         public static JSNumber CreateNaN(this IJSInProcessRuntime jsRuntime)
         {
             var infinityObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructNaN");
-            var jsObject = JSObject.FromRuntimeObjectReference(jsRuntime, infinityObjectReference);
+            var jsObject = JSObjectFactory.FromRuntimeObjectReference(jsRuntime, infinityObjectReference);
 
             if (jsObject is not JSNumber jsNumber)
             {
@@ -90,7 +91,7 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
             double value)
         {
             var numberObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructNumberFromDouble", value);
-            var jsObject = JSObject.FromRuntimeObjectReference(jsRuntime, numberObjectReference);
+            var jsObject = JSObjectFactory.FromRuntimeObjectReference(jsRuntime, numberObjectReference);
 
             if (jsObject is not JSNumber jsNumber)
             {
@@ -105,7 +106,7 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
             int value)
         {
             var numberObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructNumberFromInt", value);
-            var jsObject = JSObject.FromRuntimeObjectReference(jsRuntime, numberObjectReference);
+            var jsObject = JSObjectFactory.FromRuntimeObjectReference(jsRuntime, numberObjectReference);
 
             if (jsObject is not JSNumber jsNumber)
             {
@@ -120,7 +121,7 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
             float value)
         {
             var numberObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructNumberFromFloat", value);
-            var jsObject = JSObject.FromRuntimeObjectReference(jsRuntime, numberObjectReference);
+            var jsObject = JSObjectFactory.FromRuntimeObjectReference(jsRuntime, numberObjectReference);
 
             if (jsObject is not JSNumber jsNumber)
             {
@@ -135,7 +136,7 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
             bool value)
         {
             var numberObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructBoolean", value);
-            var jsObject = JSObject.FromRuntimeObjectReference(jsRuntime, numberObjectReference);
+            var jsObject = JSObjectFactory.FromRuntimeObjectReference(jsRuntime, numberObjectReference);
 
             if (jsObject is not JSBoolean jsBoolean)
             {

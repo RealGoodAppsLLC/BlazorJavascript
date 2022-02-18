@@ -19,6 +19,11 @@
       <EmbeddedResource Include="Javascript\script.js">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </EmbeddedResource>
+
+        <None Remove="Generated\Javascript\script.js" />
+        <EmbeddedResource Include="Generated\Javascript\script.js">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </EmbeddedResource>
     </ItemGroup>
     
 </Project>

@@ -33,6 +33,8 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             Directory.CreateDirectory(Path.Combine(outputDirectory, "Prototypes"));
             Directory.CreateDirectory(Path.Combine(outputDirectory, "Globals"));
             Directory.CreateDirectory(Path.Combine(outputDirectory, "Interfaces"));
+            Directory.CreateDirectory(Path.Combine(outputDirectory, "Javascript"));
+            Directory.CreateDirectory(Path.Combine(outputDirectory, "Factories"));
 
             var typeDefinitionFiles = new[]
             {
