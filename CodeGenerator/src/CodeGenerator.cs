@@ -28,7 +28,8 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                     interfaceInfo.Name,
                     interfaceInfo.ExtractTypeParametersResult,
                     interfaceInfo.ExtendsList,
-                    interfaceInfo.Body);
+                    interfaceInfo.Body,
+                    interfaceInfo.Name == GetGlobalThisInterfaceName());
 
                 var interfaceOutputPath = Path.Combine(
                     _outputDirectory,
@@ -59,6 +60,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
                     if (globalVariable.Type != null && globalVariable.Type.Single != null)
                     {
+                        // TODO: Should we process type aliases here?
                         var typeInterface =
                             _parsedInfo.Interfaces.FirstOrDefault(i => i.Name == globalVariable.Type.Single.Name);
 
@@ -77,7 +79,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
                 if (prototypeGlobalVariable != null)
                 {
-                    var prototypeContents = GeneratePrototypeFileContents(interfaceInfo);
+                    var prototypeContents = GeneratePrototypeFileContents(interfaceInfo, interfaceInfo.Name == GetGlobalThisInterfaceName());
 
                     var prototypeOutputPath = Path.Combine(
                         _outputDirectory,
@@ -94,30 +96,16 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 }
             }
 
-            // FIXME: Right now, we know the globalThis is a `Window`, but we might not want to assume this
-            //        in the future, especially if this code is used to generate bindings for libraries.
-            var windowInterface = _parsedInfo.Interfaces.First(interfaceInfo => interfaceInfo.Name == "Window");
-            var allWindowPropertyDetails = GetPropertiesFromInterface(
-                windowInterface,
-                true,
-                ImmutableList.Create<InterfaceInfo>());
-            var allWindowGetters = GetGetAccessorsFromInterfaceRecursively(windowInterface);
+            var globalsDefinedOutside = GetGlobalsDefinedOutsideOfGlobalThisInterface();
 
-            foreach (var globalVariableInfo in _parsedInfo.GlobalVariables)
+            foreach (var globalDefinedOutside in globalsDefinedOutside)
             {
-                // HACK: Let's exclude anything that was already defined in the `Window` interface.
-                if (allWindowPropertyDetails.Any(propertyDetails => propertyDetails.PropertyInfo.Name == globalVariableInfo.Name)
-                    || allWindowGetters.Any(getAccessor => getAccessor.Name == globalVariableInfo.Name))
-                {
-                    continue;
-                }
-
-                var contents = GenerateGlobalVariableFileContents(globalVariableInfo);
+                var contents = GenerateGlobalVariableFileContents(globalDefinedOutside);
 
                 var globalVariableOutputPath = Path.Combine(
                     _outputDirectory,
                     "Globals",
-                    $"{globalVariableInfo.Name}Global.cs");
+                    $"{globalDefinedOutside.GlobalVariableInfo.Name}Global.cs");
 
                 if (File.Exists(globalVariableOutputPath))
                 {
@@ -126,18 +114,19 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
                 File.WriteAllText(globalVariableOutputPath, contents);
 
-                if (globalVariableInfo.InlineInterface != null)
+                if (globalDefinedOutside.GlobalVariableInfo.InlineInterface != null)
                 {
                     var inlineInterfaceContents = GenerateInterfaceFileContents(
-                        $"InlineInterfaceFor{globalVariableInfo.Name}",
+                        $"{globalDefinedOutside.GlobalVariableInfo.Name}Global",
                         null,
                         ImmutableList.Create<TypeInfo>(),
-                        globalVariableInfo.InlineInterface);
+                        globalDefinedOutside.GlobalVariableInfo.InlineInterface,
+                        false);
 
                     var inlineInterfaceOutputPath = Path.Combine(
                         _outputDirectory,
                         "Interfaces",
-                        $"IInlineInterfaceFor{globalVariableInfo.Name}.cs");
+                        $"I{globalDefinedOutside.GlobalVariableInfo.Name}Global.cs");
 
                     if (File.Exists(inlineInterfaceOutputPath))
                     {
@@ -181,7 +170,8 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             string interfaceName,
             ExtractTypeParametersResult? extractTypeParametersResult,
             ImmutableList<TypeInfo> interfaceExtendsList,
-            InterfaceBodyInfo interfaceBodyInfo)
+            InterfaceBodyInfo interfaceBodyInfo,
+            bool isGlobalThis)
         {
             var stringBuilder = new StringBuilder();
 
@@ -211,26 +201,35 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
             stringBuilder.AppendLine(Indent(1) + "{");
 
-            var methods = GetMethodsFromInterfaceBody(interfaceBodyInfo);
+            // We only want methods that come from the interface body, ignoring the extends list.
+            var methods = GetMethodsFromInterfaceBody(
+                interfaceBodyInfo,
+                ImmutableList.Create<TypeInfo>(),
+                ImmutableList.Create<InterfaceInfo>(),
+                null);
 
-            foreach (var methodInfo in methods)
+            foreach (var (_, methodInfo) in methods)
             {
                 // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
                 stringBuilder.Append(Indent(2));
-                RenderMethodBeginning(stringBuilder, methodInfo, null);
+                RenderMethodBeginning(stringBuilder, methodInfo, string.Empty);
                 stringBuilder.Append(';');
                 stringBuilder.Append(Environment.NewLine);
             }
 
+            // Similar to above, we only want properties that come from the interface body, ignoring the extends list.
             var properties = GetPropertiesFromInterfaceBody(
                 interfaceBodyInfo,
-                extractTypeParametersResult);
+                extractTypeParametersResult,
+                ImmutableList.Create<TypeInfo>(),
+                ImmutableList.Create<InterfaceInfo>(),
+                null);
 
-            foreach (var propertyInfo in properties)
+            foreach (var (_, propertyInfo) in properties)
             {
                 // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
                 stringBuilder.Append(Indent(2));
-                RenderPropertyBeginning(stringBuilder, propertyInfo, null);
+                RenderPropertyBeginning(stringBuilder, propertyInfo, string.Empty);
                 stringBuilder.Append(" { get; ");
                 if (!propertyInfo.IsReadonly)
                 {
@@ -241,10 +240,95 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 stringBuilder.Append(Environment.NewLine);
             }
 
+            if (isGlobalThis)
+            {
+                AppendGlobalsToInterface(stringBuilder);
+            }
+
             stringBuilder.AppendLine(Indent(1) + "}");
             stringBuilder.AppendLine("}");
 
             return stringBuilder.ToString();
+        }
+
+        private string? ExtractPropertyTypeNameForGlobal(GlobalVariableInfo globalVariableInfo)
+        {
+            if (globalVariableInfo.InlineInterface != null)
+            {
+                return $"I{globalVariableInfo.Name}Global";
+            }
+
+            if (globalVariableInfo.Type == null
+                || IsFinalTypeTooComplexToRender(globalVariableInfo.Type, out var finalTypeInfo))
+            {
+                return null;
+            }
+
+            var globalInterfaceType = _parsedInfo.Interfaces.FirstOrDefault(i => i.Name == finalTypeInfo.Single?.Name);
+
+            return globalInterfaceType == null
+                ? null
+                : $"I{globalInterfaceType.Name}";
+        }
+
+        private void AppendGlobalsToInterface(StringBuilder stringBuilder)
+        {
+            var globalsDefinedOutside = GetGlobalsDefinedOutsideOfGlobalThisInterface();
+
+            foreach (var globalDefinedOutside in globalsDefinedOutside)
+            {
+                // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
+                stringBuilder.Append(Indent(2));
+                stringBuilder.Append(globalDefinedOutside.InterfaceTypeName);
+                stringBuilder.Append(' ');
+                stringBuilder.Append(globalDefinedOutside.GlobalVariableInfo.Name);
+                stringBuilder.Append(" { get; }");
+                stringBuilder.Append(Environment.NewLine);
+            }
+        }
+
+        private void AppendGlobalsToPrototype(StringBuilder stringBuilder)
+        {
+            var globalsDefinedOutside = GetGlobalsDefinedOutsideOfGlobalThisInterface();
+
+            foreach (var globalDefinedOutside in globalsDefinedOutside)
+            {
+                // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
+                stringBuilder.AppendLine(Indent(2) + $"{globalDefinedOutside.InterfaceTypeName} IWindow.{globalDefinedOutside.GlobalVariableInfo.Name}");
+                stringBuilder.AppendLine(Indent(2) + "{");
+
+                GeneratePropertyGetter(
+                    stringBuilder,
+                    globalDefinedOutside.GlobalVariableInfo.Name,
+                    globalDefinedOutside.InterfaceTypeName);
+
+                stringBuilder.AppendLine(Indent(2) + "}");
+            }
+        }
+
+        private static void GeneratePropertyGetter(
+            StringBuilder stringBuilder,
+            string propertyName,
+            string propertyType)
+        {
+            stringBuilder.AppendLine(Indent(3) + "get");
+            stringBuilder.AppendLine(Indent(3) + "{");
+
+            stringBuilder.AppendLine(Indent(4) + $"var propertyObj = this.GetPropertyOfObject(\"{propertyName}\");");
+            stringBuilder.AppendLine(Indent(4) + "if (propertyObj == null)");
+            stringBuilder.AppendLine(Indent(4) + "{");
+            stringBuilder.AppendLine(Indent(5) + "return null;");
+            stringBuilder.AppendLine(Indent(4) + "}");
+            stringBuilder.AppendLine();
+            stringBuilder.AppendLine(Indent(4) + $"var propertyAsReturnType = propertyObj as {propertyType};");
+            stringBuilder.AppendLine(Indent(4) + "if (propertyAsReturnType == null)");
+            stringBuilder.AppendLine(Indent(4) + "{");
+            stringBuilder.AppendLine(Indent(5) + "throw new InvalidCastException(\"Something went wrong!\");");
+            stringBuilder.AppendLine(Indent(4) + "}");
+            stringBuilder.AppendLine();
+            stringBuilder.AppendLine(Indent(4) + "return propertyAsReturnType;");
+
+            stringBuilder.AppendLine(Indent(3) + "}");
         }
 
         private static string ExtractTypeParametersString(ExtractTypeParametersResult extractTypeParametersResult)
@@ -281,19 +365,27 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             return stringBuilder.ToString();
         }
 
+        private string GetPrefixTypeNameForInterfaceSymbolImplementations(InterfaceInfo interfaceInfo)
+        {
+            var stringBuilder = new StringBuilder();
+
+            var typeParametersString = ExtractTypeParametersString(interfaceInfo.ExtractTypeParametersResult);
+            stringBuilder.Append($"I{interfaceInfo.Name}{typeParametersString}");
+
+            return stringBuilder.ToString();
+        }
+
         private void RenderMethodBeginning(
             StringBuilder stringBuilder,
             MethodInfo methodInfo,
-            InterfaceInfo? prefixInterfaceInfo)
+            string prefixTypeName)
         {
             stringBuilder.Append(GetRenderedTypeName(methodInfo.ReturnType));
             stringBuilder.Append(' ');
 
-            if (prefixInterfaceInfo != null)
+            if (!string.IsNullOrWhiteSpace(prefixTypeName))
             {
-                var typeParametersString = ExtractTypeParametersString(prefixInterfaceInfo.ExtractTypeParametersResult);
-                stringBuilder.Append($"I{prefixInterfaceInfo.Name}{typeParametersString}");
-                stringBuilder.Append('.');
+                stringBuilder.Append($"{prefixTypeName}.");
             }
 
             stringBuilder.Append(methodInfo.GetNameForCSharp());
@@ -321,32 +413,32 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
         private void RenderPropertyBeginning(
             StringBuilder stringBuilder,
             PropertyInfo propertyInfo,
-            InterfaceInfo? prefixInterfaceInfo)
+            string prefixTypeName)
         {
             stringBuilder.Append(GetRenderedTypeName(propertyInfo.Type));
             stringBuilder.Append(' ');
 
-            if (prefixInterfaceInfo != null)
+            if (!string.IsNullOrWhiteSpace(prefixTypeName))
             {
-                var typeParametersString = ExtractTypeParametersString(prefixInterfaceInfo.ExtractTypeParametersResult);
-                stringBuilder.Append($"I{prefixInterfaceInfo.Name}{typeParametersString}");
-                stringBuilder.Append('.');
+                stringBuilder.Append($"{prefixTypeName}.");
             }
 
             stringBuilder.Append(propertyInfo.GetNameForCSharp());
         }
 
-        private ImmutableList<(InterfaceInfo interfaceInfo, MethodInfo MethodInfo)> GetMethodsFromInterface(
-            InterfaceInfo interfaceInfo,
-            bool recursive,
-            ImmutableList<InterfaceInfo> alreadyProcessedInterfaces)
+        private ImmutableList<(InterfaceInfo? OwnerInterface, MethodInfo MethodInfo)> GetMethodsFromInterfaceBody(
+            InterfaceBodyInfo interfaceBodyInfo,
+            ImmutableList<TypeInfo> extendsList,
+            ImmutableList<InterfaceInfo> alreadyProcessedInterfaces,
+            InterfaceInfo? ownerInterface)
         {
-            var methods = new List<(InterfaceInfo interfaceInfo, MethodInfo MethodInfo)>();
+            var methods = new List<(InterfaceInfo? InterfaceInfo, MethodInfo MethodInfo)>();
 
-            if (recursive)
+            if (extendsList.Any())
             {
-                foreach (var extendTypeInfo in interfaceInfo.ExtendsList)
+                foreach (var extendTypeInfo in extendsList)
                 {
+                    // TODO: Should we process aliases here?
                     if (extendTypeInfo.Single == null)
                     {
                         continue;
@@ -361,56 +453,90 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                     }
 
                     alreadyProcessedInterfaces = alreadyProcessedInterfaces.Add(extendInterfaceInfo);
-                    methods.AddRange(GetMethodsFromInterface(extendInterfaceInfo, true, alreadyProcessedInterfaces));
+
+                    methods.AddRange(GetMethodsFromInterfaceBody(
+                        extendInterfaceInfo.Body,
+                        extendInterfaceInfo.ExtendsList,
+                        alreadyProcessedInterfaces,
+                        extendInterfaceInfo));
                 }
             }
 
-            var bodyMethods = GetMethodsFromInterfaceBody(interfaceInfo.Body);
+            foreach (var methodInfo in interfaceBodyInfo.Methods)
+            {
+                // FIXME: We are skipping any methods that are not simple enough for a 1 to 1 translation.
+                //        For example, nothing with generics, union types, intersection types, or function parameters.
+                if (methodInfo.ExtractTypeParametersResult.TypeParameters.Any())
+                {
+                    continue;
+                }
 
-            methods.AddRange(bodyMethods
-                .Select(methodInfo => (interfaceInfo, methodInfo))
-                .ToImmutableList());
+                if (IsFinalTypeTooComplexToRender(methodInfo.ReturnType, out _))
+                {
+                    continue;
+                }
+
+                if (methodInfo.Parameters.Any(parameterInfo => IsFinalTypeTooComplexToRender(parameterInfo.Type, out _)))
+                {
+                    continue;
+                }
+
+                methods.Add((ownerInterface, methodInfo));
+            }
 
             return methods.ToImmutableList();
         }
 
-        private ImmutableList<(InterfaceInfo interfaceInfo, PropertyInfo PropertyInfo)> GetPropertiesFromInterface(
-            InterfaceInfo interfaceInfo,
-            bool recursive,
-            ImmutableList<InterfaceInfo> alreadyProcessedInterfaces)
+        private ImmutableList<(InterfaceInfo? OwnerInterface, PropertyInfo PropertyInfo)> GetPropertiesFromInterfaceBody(
+            InterfaceBodyInfo interfaceBodyInfo,
+            ExtractTypeParametersResult? extractTypeParametersResult,
+            ImmutableList<TypeInfo> extendsList,
+            ImmutableList<InterfaceInfo> alreadyProcessedInterfaces,
+            InterfaceInfo? ownerInterface)
         {
-            var properties = new List<(InterfaceInfo interfaceInfo, PropertyInfo PropertyInfo)>();
+            var properties = new List<(InterfaceInfo? OwnerInterface, PropertyInfo PropertyInfo)>();
 
-            if (recursive)
+            foreach (var extendTypeInfo in extendsList)
             {
-                foreach (var extendTypeInfo in interfaceInfo.ExtendsList)
+                if (extendTypeInfo.Single == null)
                 {
-                    if (extendTypeInfo.Single == null)
-                    {
-                        continue;
-                    }
-
-                    var extendInterfaceInfo = _parsedInfo.Interfaces.FirstOrDefault(i => i.Name == extendTypeInfo.Single.Name);
-
-                    if (extendInterfaceInfo == null
-                        || alreadyProcessedInterfaces.Any(i => i.Name == extendInterfaceInfo.Name))
-                    {
-                        continue;
-                    }
-
-                    alreadyProcessedInterfaces = alreadyProcessedInterfaces.Add(extendInterfaceInfo);
-                    properties.AddRange(GetPropertiesFromInterface(extendInterfaceInfo, true, alreadyProcessedInterfaces));
+                    continue;
                 }
+
+                var extendInterfaceInfo = _parsedInfo.Interfaces.FirstOrDefault(i => i.Name == extendTypeInfo.Single.Name);
+
+                if (extendInterfaceInfo == null
+                    || alreadyProcessedInterfaces.Any(i => i.Name == extendInterfaceInfo.Name))
+                {
+                    continue;
+                }
+
+                alreadyProcessedInterfaces = alreadyProcessedInterfaces.Add(extendInterfaceInfo);
+
+                properties.AddRange(GetPropertiesFromInterfaceBody(
+                    extendInterfaceInfo.Body,
+                    extendInterfaceInfo.ExtractTypeParametersResult,
+                    extendInterfaceInfo.ExtendsList,
+                    alreadyProcessedInterfaces,
+                    extendInterfaceInfo));
             }
 
+            if (extractTypeParametersResult != null && extractTypeParametersResult.TypeParameters.Any())
+            {
+                return properties.ToImmutableList();
+            }
 
-            var bodyProperties = GetPropertiesFromInterfaceBody(
-                interfaceInfo.Body,
-                interfaceInfo.ExtractTypeParametersResult);
+            foreach (var propertyInfo in interfaceBodyInfo.Properties)
+            {
+                // FIXME: We are skipping any properties that are not simple enough for a 1 to 1 translation.
+                //        For example, nothing with generics, union types, intersection types, or function parameters.
+                if (IsFinalTypeTooComplexToRender(propertyInfo.Type, out _))
+                {
+                    continue;
+                }
 
-            properties.AddRange(bodyProperties
-                .Select(propertyInfo => (interfaceInfo, propertyInfo))
-                .ToImmutableList());
+                properties.Add((ownerInterface, propertyInfo));
+            }
 
             return properties.ToImmutableList();
         }
@@ -440,18 +566,33 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             return allGetAccessors.ToImmutableList();
         }
 
-        private string GenerateGlobalVariableFileContents(GlobalVariableInfo globalVariableInfo)
+        private string GenerateGlobalVariableFileContents(GlobalDefinedOutsideOfGlobalThisInterface globalDefinedOutside)
         {
             var stringBuilder = new StringBuilder();
 
+            var fullGlobalName = $"{globalDefinedOutside.GlobalVariableInfo.Name}Global";
+
             stringBuilder.AppendLine("/// <auto-generated />");
+            stringBuilder.AppendLine("using System;");
+            stringBuilder.AppendLine("using Microsoft.JSInterop;");
+            stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.BuiltIns;");
+            stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.Extensions;");
             stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.Interfaces;");
             stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.Prototypes;");
             stringBuilder.AppendLine();
             stringBuilder.AppendLine("namespace RealGoodApps.BlazorJavascript.Interop.GlobalVariables");
             stringBuilder.AppendLine("{");
-            stringBuilder.AppendLine(Indent(1) + $"public class {globalVariableInfo.Name}Global");
+            stringBuilder.AppendLine(Indent(1) + $"public class {fullGlobalName} : {globalDefinedOutside.InterfaceTypeName}, IJSObject");
             stringBuilder.AppendLine(Indent(1) + "{");
+
+            stringBuilder.Append(GenerateJSObjectSubtypeBoilerPlate(fullGlobalName));
+
+            stringBuilder.Append(GenerateInterfaceImplementations(
+                globalDefinedOutside.DefaultTypePrefix,
+                globalDefinedOutside.InterfaceBodyInfo,
+                globalDefinedOutside.ExtractTypeParametersResult,
+                globalDefinedOutside.ExtendsList));
+
             stringBuilder.AppendLine(Indent(1) + "}");
             stringBuilder.AppendLine("}");
 
@@ -470,7 +611,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             return indentationBuilder.ToString();
         }
 
-        private string GeneratePrototypeFileContents(InterfaceInfo interfaceInfo)
+        private string GeneratePrototypeFileContents(InterfaceInfo interfaceInfo, bool isGlobalThis)
         {
             var stringBuilder = new StringBuilder();
 
@@ -488,22 +629,49 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             stringBuilder.AppendLine($"{Indent(1)}public class {interfaceInfo.Name}Prototype{typeParametersString} : I{interfaceInfo.Name}{typeParametersString}, IJSObject");
             stringBuilder.AppendLine(Indent(1) + "{");
 
-            stringBuilder.AppendLine(Indent(2) + $"public {interfaceInfo.Name}Prototype(IJSInProcessRuntime jsInProcessRuntime, IJSObjectReference jsObjectReference)");
-            stringBuilder.AppendLine(Indent(2) + "{");
-            stringBuilder.AppendLine(Indent(3) + "Runtime = jsInProcessRuntime;");
-            stringBuilder.AppendLine(Indent(3) + "ObjectReference = jsObjectReference;");
-            stringBuilder.AppendLine(Indent(2) + "}");
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine(Indent(2) + "public IJSInProcessRuntime Runtime { get; }");
-            stringBuilder.AppendLine(Indent(2) + "public IJSObjectReference ObjectReference { get; }");
+            stringBuilder.Append(GenerateJSObjectSubtypeBoilerPlate($"{interfaceInfo.Name}Prototype"));
 
-            var methods = GetMethodsFromInterface(interfaceInfo, true, ImmutableList<InterfaceInfo>.Empty);
+            stringBuilder.Append(GenerateInterfaceImplementations(
+                GetPrefixTypeNameForInterfaceSymbolImplementations(interfaceInfo),
+                interfaceInfo.Body,
+                interfaceInfo.ExtractTypeParametersResult,
+                interfaceInfo.ExtendsList));
+
+            if (isGlobalThis)
+            {
+                AppendGlobalsToPrototype(stringBuilder);
+            }
+
+            stringBuilder.AppendLine(Indent(1) + "}");
+            stringBuilder.AppendLine("}");
+
+            return stringBuilder.ToString();
+        }
+
+        private string GenerateInterfaceImplementations(
+            string defaultTypePrefix,
+            InterfaceBodyInfo interfaceBodyInfo,
+            ExtractTypeParametersResult? extractTypeParametersResult,
+            ImmutableList<TypeInfo> extendsList)
+        {
+            var stringBuilder = new StringBuilder();
+
+            var methods = GetMethodsFromInterfaceBody(
+                interfaceBodyInfo,
+                extendsList,
+                ImmutableList.Create<InterfaceInfo>(),
+                null);
 
             foreach (var (methodInterfaceInfo, methodInfo) in methods)
             {
                 // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
                 stringBuilder.Append(Indent(2));
-                RenderMethodBeginning(stringBuilder, methodInfo, methodInterfaceInfo);
+
+                var prefix = methodInterfaceInfo == null
+                    ? defaultTypePrefix
+                    : GetPrefixTypeNameForInterfaceSymbolImplementations(methodInterfaceInfo);
+
+                RenderMethodBeginning(stringBuilder, methodInfo, prefix);
                 stringBuilder.Append(Environment.NewLine);
                 stringBuilder.Append(Indent(2) + "{");
                 stringBuilder.Append(Environment.NewLine);
@@ -538,34 +706,32 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 stringBuilder.Append(Environment.NewLine);
             }
 
-            var properties = GetPropertiesFromInterface(interfaceInfo, true, ImmutableList.Create<InterfaceInfo>());
+            var properties = GetPropertiesFromInterfaceBody(
+                interfaceBodyInfo,
+                extractTypeParametersResult,
+                extendsList,
+                ImmutableList.Create<InterfaceInfo>(),
+                null);
 
             foreach (var (propertyInterfaceInfo, propertyInfo) in properties)
             {
                 // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
                 stringBuilder.Append(Indent(2));
-                RenderPropertyBeginning(stringBuilder, propertyInfo, propertyInterfaceInfo);
+
+                var prefix = propertyInterfaceInfo == null
+                    ? defaultTypePrefix
+                    : GetPrefixTypeNameForInterfaceSymbolImplementations(propertyInterfaceInfo);
+
+                RenderPropertyBeginning(stringBuilder, propertyInfo, prefix);
                 stringBuilder.Append(Environment.NewLine);
                 stringBuilder.AppendLine(Indent(2) + "{");
-                stringBuilder.AppendLine(Indent(3) + "get");
-                stringBuilder.AppendLine(Indent(3) + "{");
 
                 var returnRenderedTypeName = GetRenderedTypeName(propertyInfo.Type);
 
-                stringBuilder.AppendLine(Indent(4) + $"var propertyObj = this.GetPropertyOfObject(\"{propertyInfo.Name}\");");
-                stringBuilder.AppendLine(Indent(4) + "if (propertyObj == null)");
-                stringBuilder.AppendLine(Indent(4) + "{");
-                stringBuilder.AppendLine(Indent(5) + "return null;");
-                stringBuilder.AppendLine(Indent(4) + "}");
-                stringBuilder.AppendLine();
-                stringBuilder.AppendLine(Indent(4) + $"var propertyAsReturnType = propertyObj as {returnRenderedTypeName};");
-                stringBuilder.AppendLine(Indent(4) + "if (propertyAsReturnType == null)");
-                stringBuilder.AppendLine(Indent(4) + "{");
-                stringBuilder.AppendLine(Indent(5) + "throw new InvalidCastException(\"Something went wrong!\");");
-                stringBuilder.AppendLine(Indent(4) + "}");
-                stringBuilder.AppendLine();
-                stringBuilder.AppendLine(Indent(4) + "return propertyAsReturnType;");
-                stringBuilder.AppendLine(Indent(3) + "}");
+                GeneratePropertyGetter(
+                    stringBuilder,
+                    propertyInfo.Name,
+                    returnRenderedTypeName);
 
                 if (!propertyInfo.IsReadonly)
                 {
@@ -579,16 +745,29 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 stringBuilder.AppendLine(Indent(2) + "}");
             }
 
-            stringBuilder.AppendLine(Indent(1) + "}");
-            stringBuilder.AppendLine("}");
+            return stringBuilder.ToString();
+        }
+
+        private static string GenerateJSObjectSubtypeBoilerPlate(string className)
+        {
+            var stringBuilder = new StringBuilder();
+
+            stringBuilder.AppendLine(Indent(2) + $"public {className}(IJSInProcessRuntime jsInProcessRuntime, IJSObjectReference jsObjectReference)");
+            stringBuilder.AppendLine(Indent(2) + "{");
+            stringBuilder.AppendLine(Indent(3) + "Runtime = jsInProcessRuntime;");
+            stringBuilder.AppendLine(Indent(3) + "ObjectReference = jsObjectReference;");
+            stringBuilder.AppendLine(Indent(2) + "}");
+            stringBuilder.AppendLine();
+            stringBuilder.AppendLine(Indent(2) + "public IJSInProcessRuntime Runtime { get; }");
+            stringBuilder.AppendLine(Indent(2) + "public IJSObjectReference ObjectReference { get; }");
 
             return stringBuilder.ToString();
         }
 
-        private bool IsFinalTypeSimpleEnoughToRender(TypeInfo parameterInfoType)
+        private bool IsFinalTypeTooComplexToRender(TypeInfo parameterInfoType, out TypeInfo finalTypeInfo)
         {
             // FIXME: Eventually, this method shouldn't really exist. It is just used to prevent us from having to handle complex type cases right now.
-            var finalTypeInfo = ProcessTypeAliases(parameterInfoType);
+            finalTypeInfo = ProcessTypeAliases(parameterInfoType);
 
             return finalTypeInfo.Single == null
                    || finalTypeInfo.Single.IsUnhandled
@@ -716,6 +895,14 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 prototypeTypeIdentifier++;
             }
 
+            var globalsDefinedOutside = GetGlobalsDefinedOutsideOfGlobalThisInterface();
+
+            foreach (var globalDefinedOutside in globalsDefinedOutside)
+            {
+                stringBuilder.AppendLine($"window.BlazorJavascript.typeGlobal{globalDefinedOutside.GlobalVariableInfo.Name} = {JsonConvert.SerializeObject(prototypeTypeIdentifier)};");
+                prototypeTypeIdentifier++;
+            }
+
             stringBuilder.AppendLine();
 
             stringBuilder.AppendLine("window.BlazorJavascript.obtainPrototype = function(o) {");
@@ -729,6 +916,15 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             stringBuilder.AppendLine(Indent(2) + "return window.BlazorJavascript.typeBuiltInUndefined;");
             stringBuilder.AppendLine(Indent(1) + "}");
             stringBuilder.AppendLine();
+
+            foreach (var globalDefinedOutside in globalsDefinedOutside)
+            {
+                stringBuilder.AppendLine(Indent(1) + $"if (typeof {globalDefinedOutside.GlobalVariableInfo.Name} !== 'undefined' && p === {globalDefinedOutside.GlobalVariableInfo.Name}) {{");
+                stringBuilder.AppendLine(Indent(2) + $"return window.BlazorJavascript.typeGlobal{globalDefinedOutside.GlobalVariableInfo.Name};");
+                stringBuilder.AppendLine(Indent(1) + "}");
+                stringBuilder.AppendLine();
+            }
+
             stringBuilder.AppendLine(Indent(1) + "const chain = window.BlazorJavascript.getPrototypeChain(p);");
             stringBuilder.AppendLine();
             stringBuilder.AppendLine(Indent(1) + "for (let prototypeIndex = 0; prototypeIndex < chain.length; prototypeIndex++) {");
@@ -769,41 +965,13 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             return stringBuilder.ToString();
         }
 
-        private ImmutableList<MethodInfo> GetMethodsFromInterfaceBody(InterfaceBodyInfo interfaceBodyInfo)
-        {
-            var methods = new List<MethodInfo>();
-
-            foreach (var methodInfo in interfaceBodyInfo.Methods)
-            {
-                // FIXME: We are skipping any methods that are not simple enough for a 1 to 1 translation.
-                //        For example, nothing with generics, union types, intersection types, or function parameters.
-                if (methodInfo.ExtractTypeParametersResult.TypeParameters.Any())
-                {
-                    continue;
-                }
-
-                if (IsFinalTypeSimpleEnoughToRender(methodInfo.ReturnType))
-                {
-                    continue;
-                }
-
-                if (methodInfo.Parameters.Any(parameterInfo => IsFinalTypeSimpleEnoughToRender(parameterInfo.Type)))
-                {
-                    continue;
-                }
-
-                methods.Add(methodInfo);
-            }
-
-            return methods.ToImmutableList();
-        }
-
         public string GenerateObjectFactoryFileContents(ImmutableList<(InterfaceInfo InterfaceInfo, GlobalVariableInfo GlobalVariableInfo)> prototypes)
         {
             var stringBuilder = new StringBuilder();
             stringBuilder.AppendLine("/// <auto-generated />");
             stringBuilder.AppendLine("using Microsoft.JSInterop;");
             stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.BuiltIns;");
+            stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.GlobalVariables;");
             stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.Prototypes;");
             stringBuilder.AppendLine();
             stringBuilder.AppendLine("namespace RealGoodApps.BlazorJavascript.Interop.Factories");
@@ -841,6 +1009,14 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 prototypeTypeIdentifier++;
             }
 
+            var globalsDefinedOutside = GetGlobalsDefinedOutsideOfGlobalThisInterface();
+
+            foreach (var globalDefinedOutside in globalsDefinedOutside)
+            {
+                stringBuilder.AppendLine(Indent(4) + $"{prototypeTypeIdentifier} => new {globalDefinedOutside.GlobalVariableInfo.Name}Global(jsInProcessRuntime, objectReferenceNotNull),");
+                prototypeTypeIdentifier++;
+            }
+
             stringBuilder.AppendLine(Indent(4) + "_ => new JSObject(jsInProcessRuntime, objectReferenceNotNull),");
             stringBuilder.AppendLine(Indent(3) + "};");
             stringBuilder.AppendLine(Indent(2) + "}");
@@ -850,30 +1026,75 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             return stringBuilder.ToString();
         }
 
-        private ImmutableList<PropertyInfo> GetPropertiesFromInterfaceBody(
-            InterfaceBodyInfo interfaceBodyInfo,
-            ExtractTypeParametersResult? extractTypeParametersResult)
+        public sealed record GlobalDefinedOutsideOfGlobalThisInterface(
+            GlobalVariableInfo GlobalVariableInfo,
+            string InterfaceTypeName,
+            InterfaceBodyInfo InterfaceBodyInfo,
+            ExtractTypeParametersResult? ExtractTypeParametersResult,
+            ImmutableList<TypeInfo> ExtendsList,
+            string DefaultTypePrefix);
+
+        private ImmutableList<GlobalDefinedOutsideOfGlobalThisInterface> GetGlobalsDefinedOutsideOfGlobalThisInterface()
         {
-            if (extractTypeParametersResult != null && extractTypeParametersResult.TypeParameters.Any())
-            {
-                return ImmutableList.Create<PropertyInfo>();
-            }
+            var globalThisInterface = _parsedInfo.Interfaces.First(interfaceInfo => interfaceInfo.Name == GetGlobalThisInterfaceName());
+            var allProperties = GetPropertiesFromInterfaceBody(
+                globalThisInterface.Body,
+                globalThisInterface.ExtractTypeParametersResult,
+                globalThisInterface.ExtendsList,
+                ImmutableList.Create<InterfaceInfo>(),
+                null);
+            var allWindowGetters = GetGetAccessorsFromInterfaceRecursively(globalThisInterface);
 
-            var properties = new List<PropertyInfo>();
+            var result = new List<GlobalDefinedOutsideOfGlobalThisInterface>();
 
-            foreach (var propertyInfo in interfaceBodyInfo.Properties)
+            foreach (var globalVariableInfo in _parsedInfo.GlobalVariables)
             {
-                // FIXME: We are skipping any properties that are not simple enough for a 1 to 1 translation.
-                //        For example, nothing with generics, union types, intersection types, or function parameters.
-                if (IsFinalTypeSimpleEnoughToRender(propertyInfo.Type))
+                // HACK: Let's exclude anything that was already defined in the `Window` interface.
+                if (allProperties.Any(propertyDetails => propertyDetails.PropertyInfo.Name == globalVariableInfo.Name)
+                    || allWindowGetters.Any(getAccessor => getAccessor.Name == globalVariableInfo.Name))
                 {
                     continue;
                 }
 
-                properties.Add(propertyInfo);
+                var globalPropertyTypeName = ExtractPropertyTypeNameForGlobal(globalVariableInfo);
+
+                if (string.IsNullOrWhiteSpace(globalPropertyTypeName))
+                {
+                    continue;
+                }
+
+                if (globalVariableInfo.InlineInterface != null)
+                {
+                    result.Add(new GlobalDefinedOutsideOfGlobalThisInterface(
+                        globalVariableInfo,
+                        globalPropertyTypeName,
+                        globalVariableInfo.InlineInterface,
+                        null,
+                        ImmutableList.Create<TypeInfo>(),
+                        $"I{globalVariableInfo.Name}Global"));
+                }
+                else
+                {
+                    var interfaceTypeInfo = _parsedInfo.Interfaces.First(i => i.Name == globalPropertyTypeName.Substring(1));
+
+                    result.Add(new GlobalDefinedOutsideOfGlobalThisInterface(
+                        globalVariableInfo,
+                        globalPropertyTypeName,
+                        interfaceTypeInfo.Body,
+                        interfaceTypeInfo.ExtractTypeParametersResult,
+                        interfaceTypeInfo.ExtendsList,
+                        GetPrefixTypeNameForInterfaceSymbolImplementations(interfaceTypeInfo)));
+                }
             }
 
-            return properties.ToImmutableList();
+            return result.ToImmutableList();
+        }
+
+        private string GetGlobalThisInterfaceName()
+        {
+            // FIXME: Right now, we know the globalThis is a `Window`, but we might not want to assume this
+            //        in the future, especially if this code is used to generate bindings for libraries.
+            return "Window";
         }
     }
 }

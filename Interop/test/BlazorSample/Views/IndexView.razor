@@ -15,6 +15,12 @@
         }
 
         var window = jsInProcessRuntime.GetWindow();
+        window.console.clear();
+
+        var now = window.Date.now();
+        Console.WriteLine($"It is: {now.IsNaN()}");
+        Console.WriteLine($"It is: {now.IsInteger()}");
+        Console.WriteLine($"It is: {now.ConvertToDotNetLong()}");
 
         var body = window.document.body;
         var appendChildFunction = body.GetPropertyOfObject("appendChild") as JSFunction;
