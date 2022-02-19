@@ -23,6 +23,9 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
         public int PrototypeCount { get; private set; }
         public int MethodImplementationCount { get; private set; }
         public int PropertyImplementationCount { get; private set; }
+        public int InterfaceMethodCount { get; private set; }
+        public int InterfacePropertyCount { get; private set; }
+        public int AppendedGlobalsCount { get; private set; }
 
         public void Generate()
         {
@@ -216,6 +219,8 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
             foreach (var (_, methodInfo) in methods)
             {
+                InterfaceMethodCount++;
+
                 // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
                 stringBuilder.Append(Indent(2));
                 RenderMethodBeginning(stringBuilder, methodInfo, string.Empty);
@@ -233,6 +238,8 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
             foreach (var (_, propertyInfo) in properties)
             {
+                InterfacePropertyCount++;
+
                 // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
                 stringBuilder.Append(Indent(2));
                 RenderPropertyBeginning(stringBuilder, propertyInfo, string.Empty);
@@ -263,6 +270,8 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
             foreach (var globalDefinedOutside in globalsDefinedOutside)
             {
+                AppendedGlobalsCount++;
+
                 // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
                 stringBuilder.Append(Indent(2));
                 stringBuilder.Append(globalDefinedOutside.InterfaceTypeName);

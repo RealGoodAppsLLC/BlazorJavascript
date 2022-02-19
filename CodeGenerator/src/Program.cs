@@ -83,6 +83,9 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             Console.WriteLine($"Prototype count: {generator.PrototypeCount}");
             Console.WriteLine($"Method implementation count: {generator.MethodImplementationCount}");
             Console.WriteLine($"Property implementation count: {generator.PropertyImplementationCount}");
+            Console.WriteLine($"Interface method count: {generator.InterfaceMethodCount}");
+            Console.WriteLine($"Interface property count: {generator.InterfacePropertyCount}");
+            Console.WriteLine($"Appended globals count: {generator.AppendedGlobalsCount}");
 
             return 0;
         }
