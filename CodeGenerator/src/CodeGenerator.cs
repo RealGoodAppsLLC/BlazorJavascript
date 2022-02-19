@@ -251,26 +251,6 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             return stringBuilder.ToString();
         }
 
-        private string? ExtractPropertyTypeNameForGlobal(GlobalVariableInfo globalVariableInfo)
-        {
-            if (globalVariableInfo.InlineInterface != null)
-            {
-                return $"I{globalVariableInfo.Name}Global";
-            }
-
-            if (globalVariableInfo.Type == null
-                || IsFinalTypeTooComplexToRender(globalVariableInfo.Type, out var finalTypeInfo))
-            {
-                return null;
-            }
-
-            var globalInterfaceType = _parsedInfo.Interfaces.FirstOrDefault(i => i.Name == finalTypeInfo.Single?.Name);
-
-            return globalInterfaceType == null
-                ? null
-                : $"I{globalInterfaceType.Name}";
-        }
-
         private void AppendGlobalsToInterface(StringBuilder stringBuilder)
         {
             var globalsDefinedOutside = GetGlobalsDefinedOutsideOfGlobalThisInterface();
@@ -1056,35 +1036,39 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                     continue;
                 }
 
-                var globalPropertyTypeName = ExtractPropertyTypeNameForGlobal(globalVariableInfo);
-
-                if (string.IsNullOrWhiteSpace(globalPropertyTypeName))
-                {
-                    continue;
-                }
-
                 if (globalVariableInfo.InlineInterface != null)
                 {
                     result.Add(new GlobalDefinedOutsideOfGlobalThisInterface(
                         globalVariableInfo,
-                        globalPropertyTypeName,
+                        $"I{globalVariableInfo.Name}Global",
                         globalVariableInfo.InlineInterface,
                         null,
                         ImmutableList.Create<TypeInfo>(),
                         $"I{globalVariableInfo.Name}Global"));
-                }
-                else
-                {
-                    var interfaceTypeInfo = _parsedInfo.Interfaces.First(i => i.Name == globalPropertyTypeName.Substring(1));
 
-                    result.Add(new GlobalDefinedOutsideOfGlobalThisInterface(
-                        globalVariableInfo,
-                        globalPropertyTypeName,
-                        interfaceTypeInfo.Body,
-                        interfaceTypeInfo.ExtractTypeParametersResult,
-                        interfaceTypeInfo.ExtendsList,
-                        GetPrefixTypeNameForInterfaceSymbolImplementations(interfaceTypeInfo)));
+                    continue;
                 }
+
+                if (globalVariableInfo.Type == null
+                    || IsFinalTypeTooComplexToRender(globalVariableInfo.Type, out var finalTypeInfo))
+                {
+                    continue;
+                }
+
+                var globalInterfaceType = _parsedInfo.Interfaces.FirstOrDefault(i => i.Name == finalTypeInfo.Single?.Name);
+
+                if (globalInterfaceType == null)
+                {
+                    continue;
+                }
+
+                result.Add(new GlobalDefinedOutsideOfGlobalThisInterface(
+                    globalVariableInfo,
+                    $"I{globalInterfaceType.Name}",
+                    globalInterfaceType.Body,
+                    globalInterfaceType.ExtractTypeParametersResult,
+                    globalInterfaceType.ExtendsList,
+                    GetPrefixTypeNameForInterfaceSymbolImplementations(globalInterfaceType)));
             }
 
             return result.ToImmutableList();
