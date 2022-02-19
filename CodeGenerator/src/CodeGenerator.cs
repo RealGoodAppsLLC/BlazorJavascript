@@ -568,7 +568,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             stringBuilder.Append(GenerateJSObjectSubtypeBoilerPlate(fullGlobalName));
 
             stringBuilder.Append(GenerateInterfaceImplementations(
-                globalDefinedOutside.DefaultTypePrefix,
+                globalDefinedOutside.InterfaceTypeName,
                 globalDefinedOutside.InterfaceBodyInfo,
                 globalDefinedOutside.ExtractTypeParametersResult,
                 globalDefinedOutside.ExtendsList));
@@ -1011,8 +1011,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             string InterfaceTypeName,
             InterfaceBodyInfo InterfaceBodyInfo,
             ExtractTypeParametersResult? ExtractTypeParametersResult,
-            ImmutableList<TypeInfo> ExtendsList,
-            string DefaultTypePrefix);
+            ImmutableList<TypeInfo> ExtendsList);
 
         private ImmutableList<GlobalDefinedOutsideOfGlobalThisInterface> GetGlobalsDefinedOutsideOfGlobalThisInterface()
         {
@@ -1043,8 +1042,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                         $"I{globalVariableInfo.Name}Global",
                         globalVariableInfo.InlineInterface,
                         null,
-                        ImmutableList.Create<TypeInfo>(),
-                        $"I{globalVariableInfo.Name}Global"));
+                        ImmutableList.Create<TypeInfo>()));
 
                     continue;
                 }
@@ -1064,11 +1062,10 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
                 result.Add(new GlobalDefinedOutsideOfGlobalThisInterface(
                     globalVariableInfo,
-                    $"I{globalInterfaceType.Name}",
+                    GetPrefixTypeNameForInterfaceSymbolImplementations(globalInterfaceType),
                     globalInterfaceType.Body,
                     globalInterfaceType.ExtractTypeParametersResult,
-                    globalInterfaceType.ExtendsList,
-                    GetPrefixTypeNameForInterfaceSymbolImplementations(globalInterfaceType)));
+                    globalInterfaceType.ExtendsList));
             }
 
             return result.ToImmutableList();
