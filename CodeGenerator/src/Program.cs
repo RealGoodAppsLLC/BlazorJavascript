@@ -16,6 +16,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
             var tsDumperOutputDirectory = args[0];
             var outputDirectory = args[1];
+            var outputStatsPath = args.Length > 2 ? args[2] : string.Empty;
 
             if (!Directory.Exists(tsDumperOutputDirectory))
             {
@@ -86,6 +87,28 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             Console.WriteLine($"Interface method count: {generator.InterfaceMethodCount}");
             Console.WriteLine($"Interface property count: {generator.InterfacePropertyCount}");
             Console.WriteLine($"Appended globals count: {generator.AppendedGlobalsCount}");
+
+            if (!string.IsNullOrWhiteSpace(outputStatsPath))
+            {
+                var outputStatsDirectory = Path.GetDirectoryName(outputStatsPath);
+
+                if (!string.IsNullOrWhiteSpace(outputStatsDirectory))
+                {
+                    Directory.CreateDirectory(outputStatsDirectory);
+                }
+
+                var stats = new GeneratedStats(
+                    generator.InterfaceCount,
+                    generator.GlobalCount,
+                    generator.PrototypeCount,
+                    generator.MethodImplementationCount,
+                    generator.PropertyImplementationCount,
+                    generator.InterfaceMethodCount,
+                    generator.InterfacePropertyCount,
+                    generator.AppendedGlobalsCount);
+
+                File.WriteAllText(outputStatsPath, JsonConvert.SerializeObject(stats, Formatting.Indented));
+            }
 
             return 0;
         }
