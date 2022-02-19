@@ -21,6 +21,8 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
         public int InterfaceCount { get; private set; }
         public int GlobalCount { get; private set; }
         public int PrototypeCount { get; private set; }
+        public int MethodImplementationCount { get; private set; }
+        public int PropertyImplementationCount { get; private set; }
 
         public void Generate()
         {
@@ -659,6 +661,8 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                     ? defaultTypePrefix
                     : GetPrefixTypeNameForInterfaceSymbolImplementations(methodInterfaceInfo);
 
+                MethodImplementationCount++;
+
                 RenderMethodBeginning(stringBuilder, methodInfo, prefix);
                 stringBuilder.Append(Environment.NewLine);
                 stringBuilder.Append(Indent(2) + "{");
@@ -709,6 +713,8 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 var prefix = propertyInterfaceInfo == null
                     ? defaultTypePrefix
                     : GetPrefixTypeNameForInterfaceSymbolImplementations(propertyInterfaceInfo);
+
+                PropertyImplementationCount++;
 
                 RenderPropertyBeginning(stringBuilder, propertyInfo, prefix);
                 stringBuilder.Append(Environment.NewLine);
