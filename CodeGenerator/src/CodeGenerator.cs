@@ -422,7 +422,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             {
                 foreach (var extendTypeInfo in extendsList)
                 {
-                    // TODO: Should we process aliases here?
+                    // FIXME: I am probably missing something, but when we process type aliases here it causes problems in detecting methods.
                     if (extendTypeInfo.Single == null)
                     {
                         continue;
