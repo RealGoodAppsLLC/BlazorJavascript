@@ -76,6 +76,12 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
             generator.Generate();
 
+            Console.WriteLine("Generated interop code!");
+            Console.WriteLine("---");
+            Console.WriteLine($"Interface count: {generator.InterfaceCount}");
+            Console.WriteLine($"Global count: {generator.GlobalCount}");
+            Console.WriteLine($"Prototype count: {generator.PrototypeCount}");
+
             return 0;
         }
     }
