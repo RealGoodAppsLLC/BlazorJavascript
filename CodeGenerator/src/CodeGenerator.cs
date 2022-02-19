@@ -62,11 +62,9 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                         continue;
                     }
 
-                    if (globalVariable.Type != null && globalVariable.Type.Single != null)
+                    if (globalVariable.Type != null && !IsFinalTypeTooComplexToRender(globalVariable.Type, out var finalTypeInfo))
                     {
-                        // TODO: Should we process type aliases here?
-                        var typeInterface =
-                            _parsedInfo.Interfaces.FirstOrDefault(i => i.Name == globalVariable.Type.Single.Name);
+                        var typeInterface = _parsedInfo.Interfaces.FirstOrDefault(i => i.Name == finalTypeInfo.Single?.Name);
 
                         if (typeInterface == null)
                         {
