@@ -20,6 +20,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 "checked" => "@checked",
                 "as" => "@as",
                 "operator" => "@operator",
+                "namespace" => "@namespace",
                 "this" => "@this",
                 "event" => "@event",
                 "continue" => "@continue",

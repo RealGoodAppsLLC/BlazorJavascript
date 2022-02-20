@@ -213,6 +213,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             // We only want methods that come from the interface body, ignoring the extends list.
             var methods = GetMethodsFromInterfaceBody(
                 interfaceBodyInfo,
+                extractTypeParametersResult,
                 ImmutableList.Create<TypeInfo>(),
                 ImmutableList.Create<InterfaceInfo>(),
                 null);
@@ -423,6 +424,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
         private ImmutableList<(InterfaceInfo? OwnerInterface, MethodInfo MethodInfo)> GetMethodsFromInterfaceBody(
             InterfaceBodyInfo interfaceBodyInfo,
+            ExtractTypeParametersResult? extractTypeParametersResult,
             ImmutableList<TypeInfo> extendsList,
             ImmutableList<InterfaceInfo> alreadyProcessedInterfaces,
             InterfaceInfo? ownerInterface)
@@ -451,10 +453,16 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
                     methods.AddRange(GetMethodsFromInterfaceBody(
                         extendInterfaceInfo.Body,
+                        extendInterfaceInfo.ExtractTypeParametersResult,
                         extendInterfaceInfo.ExtendsList,
                         alreadyProcessedInterfaces,
                         extendInterfaceInfo));
                 }
+            }
+
+            if (extractTypeParametersResult != null && extractTypeParametersResult.TypeParameters.Any())
+            {
+                return methods.ToImmutableList();
             }
 
             foreach (var methodInfo in interfaceBodyInfo.Methods)
@@ -657,6 +665,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
             var methods = GetMethodsFromInterfaceBody(
                 interfaceBodyInfo,
+                extractTypeParametersResult,
                 extendsList,
                 ImmutableList.Create<InterfaceInfo>(),
                 null);
@@ -689,11 +698,11 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 stringBuilder.AppendLine(Indent(4) + "throw new InvalidCastException(\"Something went wrong!\");");
                 stringBuilder.AppendLine(Indent(3) + "}");
                 stringBuilder.AppendLine();
-                stringBuilder.AppendLine(Indent(3) + $"var result = propertyAsFunction.Invoke(this{parametersPrefix}{parametersString});");
+                stringBuilder.AppendLine(Indent(3) + $"var resultObj = propertyAsFunction.Invoke(this{parametersPrefix}{parametersString});");
 
                 if (returnRenderedTypeName != "void")
                 {
-                    stringBuilder.AppendLine(Indent(3) + $"var resultAsType = result as {returnRenderedTypeName};");
+                    stringBuilder.AppendLine(Indent(3) + $"var resultAsType = resultObj as {returnRenderedTypeName};");
                     stringBuilder.AppendLine();
                     stringBuilder.AppendLine(Indent(3) + "if (resultAsType == null)");
                     stringBuilder.AppendLine(Indent(3) + "{");
@@ -770,7 +779,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
         private bool IsFinalTypeTooComplexToRender(TypeInfo parameterInfoType, out TypeInfo finalTypeInfo)
         {
             // FIXME: Eventually, this method shouldn't really exist. It is just used to prevent us from having to handle complex type cases right now.
-            finalTypeInfo = ProcessTypeAliases(parameterInfoType);
+            finalTypeInfo = ProcessTypeAliasesAndRewriteNulls(parameterInfoType);
 
             return finalTypeInfo.Single == null
                    || finalTypeInfo.Single.IsUnhandled
@@ -780,7 +789,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
         private string GetRenderedTypeName(TypeInfo typeInfo)
         {
-            var finalTypeInfo = ProcessTypeAliases(typeInfo);
+            var finalTypeInfo = ProcessTypeAliasesAndRewriteNulls(typeInfo);
 
             var singleTypeInfo = finalTypeInfo.Single;
 
@@ -837,8 +846,10 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             return fullName.ToString();
         }
 
-        private TypeInfo ProcessTypeAliases(TypeInfo typeInfo)
+        private TypeInfo ProcessTypeAliasesAndRewriteNulls(TypeInfo typeInfo)
         {
+            typeInfo = RewriteNullsForUnion(typeInfo);
+
             // Anything that looks like a single type is a candidate for being an alias.
             if (typeInfo.Single == null)
             {
@@ -858,6 +869,38 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
                 typeInfo = typeAlias.AliasType;
             }
+        }
+
+        private TypeInfo RewriteNullsForUnion(TypeInfo typeInfo)
+        {
+            if (typeInfo.Union == null)
+            {
+                return typeInfo;
+            }
+
+            var finalTypeList = new List<TypeInfo>();
+
+            foreach (var typeWithinUnion in typeInfo.Union.Types)
+            {
+                if (typeWithinUnion.Single == null
+                    || typeWithinUnion.Single.Name != "null")
+                {
+                    finalTypeList.Add(typeWithinUnion);
+                }
+            }
+
+            if (finalTypeList.Count == 1)
+            {
+                return finalTypeList.First();
+            }
+
+            return new TypeInfo(
+                new UnionTypeInfo(finalTypeList.ToImmutableList()),
+                null,
+                null,
+                null,
+                null,
+                null);
         }
 
         private static bool DoesInterfaceBodyHavePrototype(
