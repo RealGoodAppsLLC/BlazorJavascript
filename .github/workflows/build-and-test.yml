@@ -53,7 +53,10 @@ jobs:
         run: git add $GITHUB_SHA/stats.json
       - name: Commit Stats
         working-directory: commit-stats
-        run: git commit -m "Stats for $GITHUB_SHA"
+        run: |
+          git config --global user.email "blazorjavascriptservice@gmail.com"
+          git config --global user.name "BlazorJavascript Service Account"
+          git commit -m "Stats for $GITHUB_SHA"
       - name: Push Stats
         working-directory: commit-stats
         run: git push origin commit-stats
