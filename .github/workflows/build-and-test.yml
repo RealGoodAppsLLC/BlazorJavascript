@@ -23,7 +23,7 @@ jobs:
             6.0.x
       - name: Install TSDumper Dependencies
         working-directory: TSDumper
-        run: npm ci
+        run: npm install
       - name: Run TSDumper
         working-directory: TSDumper
         run: npm run dump
