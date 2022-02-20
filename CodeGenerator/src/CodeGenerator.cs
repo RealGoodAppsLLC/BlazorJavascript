@@ -1151,6 +1151,10 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             stringBuilder.AppendLine(Indent(2) + "if (chainPrototype === String.prototype) {");
             stringBuilder.AppendLine(Indent(3) + "return window.BlazorJavascript.typeBuiltInString;");
             stringBuilder.AppendLine(Indent(2) + "}");
+            stringBuilder.AppendLine();
+            stringBuilder.AppendLine(Indent(2) + "if (chainPrototype === Array.prototype) {");
+            stringBuilder.AppendLine(Indent(3) + "return window.BlazorJavascript.typeBuiltInArray;");
+            stringBuilder.AppendLine(Indent(2) + "}");
 
             foreach (var prototypeInfo in prototypes)
             {

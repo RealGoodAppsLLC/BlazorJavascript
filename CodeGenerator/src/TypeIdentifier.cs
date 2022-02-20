@@ -13,6 +13,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             Object,
             Function,
             Boolean,
+            Array,
         }
 
         public static int ToInteger(
