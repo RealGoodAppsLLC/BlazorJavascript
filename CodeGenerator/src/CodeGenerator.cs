@@ -949,6 +949,12 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
         private bool IsFinalTypeTooComplexToRender(ProcessedTypeInfo parameterInfoType)
         {
             // FIXME: Eventually, this method shouldn't really exist. It is just used to prevent us from having to handle complex type cases right now.
+            if (parameterInfoType.TypeInfo.Array != null)
+            {
+                // We know that the array must have been processed too, so this is safe.
+                return IsFinalTypeTooComplexToRender(new ProcessedTypeInfo(parameterInfoType.TypeInfo.Array));
+            }
+
             return parameterInfoType.TypeInfo.Single == null
                    || parameterInfoType.TypeInfo.Single.IsUnhandled
                    || parameterInfoType.TypeInfo.Single.TypeArguments.Any()
@@ -957,6 +963,12 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
         private string GetRenderedTypeName(ProcessedTypeInfo processedTypeInfo)
         {
+            if (processedTypeInfo.TypeInfo.Array != null)
+            {
+                // FIXME: Can we return a typed array possibly?
+                return "JSArray";
+            }
+
             var singleTypeInfo = processedTypeInfo.TypeInfo.Single;
 
             if (singleTypeInfo == null)
@@ -1015,6 +1027,19 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
         ProcessedTypeInfo ProcessTypeAliasesAndRewriteNulls(TypeInfo typeInfo)
         {
             typeInfo = RewriteNullsForUnion(typeInfo);
+
+            // Process arrays!
+            if (typeInfo.Array != null)
+            {
+                // FIXME: Does it make sense to convert `ProcessTypeAliasesAndRewriteNulls` into a public and
+                //        internal version to prevent this awkwardness?
+                var processedArrayItemType = ProcessTypeAliasesAndRewriteNulls(typeInfo.Array);
+
+                typeInfo = typeInfo with
+                {
+                    Array = processedArrayItemType.TypeInfo,
+                };
+            }
 
             // Anything that looks like a single type is a candidate for being an alias.
             if (typeInfo.Single == null)
