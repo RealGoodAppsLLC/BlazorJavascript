@@ -48,5 +48,16 @@
 
         Console.WriteLine(date.toLocaleString().ConvertToDotNetString());
         Console.WriteLine(date2.toLocaleString().ConvertToDotNetString());
+
+        var someArray = jsInProcessRuntime.CreateArray();
+        var initialLength = someArray.length;
+        Console.WriteLine($"Initial array length: {initialLength.ConvertToDotNetInt()}");
+        var pushResult1 = someArray.PushItem(date);
+        Console.WriteLine($"Push result 1: {pushResult1.ConvertToDotNetInt()}");
+        var pushResult2 = someArray.PushItem(date2);
+        Console.WriteLine($"Push result 2: {pushResult2.ConvertToDotNetInt()}");
+
+        var secondItem = someArray.GetItemAtIndex(jsInProcessRuntime.CreateNumberFromInt(1)) as IDate;
+        Console.WriteLine(secondItem.toLocaleDateString().ConvertToDotNetString());
     }
 }

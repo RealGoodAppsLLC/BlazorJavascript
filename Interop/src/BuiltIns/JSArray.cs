@@ -5,9 +5,10 @@ using RealGoodApps.BlazorJavascript.Interop.Factories;
 
 namespace RealGoodApps.BlazorJavascript.Interop.BuiltIns
 {
-    public class JSArray : IJSObject
+    public abstract class JSAbstractArray<TJSObject> : IJSObject
+        where TJSObject : class, IJSObject
     {
-        public JSArray(
+        protected JSAbstractArray(
             IJSInProcessRuntime jsInProcessRuntime,
             IJSObjectReference jsObjectReference)
         {
@@ -33,42 +34,76 @@ namespace RealGoodApps.BlazorJavascript.Interop.BuiltIns
             }
         }
 
-        public virtual IJSObject? GetItemAtIndex(JSNumber index)
+        public TJSObject? GetItemAtIndex(JSNumber index)
         {
             var itemResult = Runtime.Invoke<IJSObjectReference?>(
                 "__blazorJavascript_arrayItemAtIndex",
                 ObjectReference,
-                index);
+                index.ObjectReference);
 
             if (itemResult == null)
             {
                 return null;
             }
 
-            return JSObjectFactory.FromRuntimeObjectReference(
+            var itemResultObject = JSObjectFactory.FromRuntimeObjectReference(
                 Runtime,
                 itemResult);
+
+            if (itemResultObject == null)
+            {
+                return null;
+            }
+
+            if (itemResultObject is not TJSObject itemResultAsType)
+            {
+                throw new InvalidCastException("The item at index method did not return the right type.");
+            }
+
+            return itemResultAsType;
+        }
+
+        public JSNumber PushItem(TJSObject item)
+        {
+            var itemResult = Runtime.Invoke<IJSObjectReference?>(
+                "__blazorJavascript_arrayPush",
+                ObjectReference,
+                item.ObjectReference);
+
+            if (itemResult == null)
+            {
+                throw new Exception("The array push method did not return a result.");
+            }
+
+            var itemResultAsObject = JSObjectFactory.FromRuntimeObjectReference(
+                Runtime,
+                itemResult);
+
+            if (itemResultAsObject is not JSNumber itemResultAsNumber)
+            {
+                throw new InvalidCastException("The array push method did not return a JSNumber.");
+            }
+
+            return itemResultAsNumber;
         }
     }
 
-    public class JSArray<TJSObject> : JSArray
+    public class JSArray : JSAbstractArray<IJSObject>
+    {
+        public JSArray(
+            IJSInProcessRuntime jsInProcessRuntime,
+            IJSObjectReference jsObjectReference)
+            : base(jsInProcessRuntime, jsObjectReference)
+        {
+        }
+    }
+
+    public class JSArray<TJSObject> : JSAbstractArray<TJSObject>
         where TJSObject : class, IJSObject
     {
         public JSArray(IJSInProcessRuntime jsInProcessRuntime, IJSObjectReference jsObjectReference)
             : base(jsInProcessRuntime, jsObjectReference)
         {
-        }
-
-        public override TJSObject? GetItemAtIndex(JSNumber index)
-        {
-            var itemAsJsObject = base.GetItemAtIndex(index);
-
-            if (itemAsJsObject is not TJSObject itemAsResultType)
-            {
-                throw new InvalidCastException("The item retrieved is not the correct type.");
-            }
-
-            return itemAsResultType;
         }
     }
 }

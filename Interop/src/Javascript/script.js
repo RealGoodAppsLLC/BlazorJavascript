@@ -27,6 +27,10 @@ if (typeof window['blazorJavascript'] === 'undefined') {
         return blazorJavascript.wrapForInterop(!!val);
     };
 
+    blazorJavascript.constructArray = function() {
+        return blazorJavascript.wrapForInterop([]);
+    };
+
     blazorJavascript.constructNumberFromDouble = function(val) {
         return blazorJavascript.wrapForInterop(parseFloat(val));
     };
@@ -146,6 +150,13 @@ if (typeof window['blazorJavascript'] === 'undefined') {
         let unwrappedIndex = blazorJavascript.unwrap(i);
 
         return blazorJavascript.wrapForInterop(unwrapped[unwrappedIndex]);
+    };
+
+    blazorJavascript.arrayPush = function(a, i) {
+        let unwrapped = blazorJavascript.unwrap(a);
+        let unwrappedItem = blazorJavascript.unwrap(i);
+
+        return blazorJavascript.wrapForInterop(unwrapped.push(unwrappedItem));
     };
 
     blazorJavascript.constructorFunction = function(i) {

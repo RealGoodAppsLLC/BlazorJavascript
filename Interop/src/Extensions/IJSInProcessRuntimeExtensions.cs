@@ -145,5 +145,19 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
 
             return jsBoolean;
         }
+
+        public static JSArray CreateArray(
+            this IJSInProcessRuntime jsRuntime)
+        {
+            var arrayObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructArray");
+            var jsObject = JSObjectFactory.FromRuntimeObjectReference(jsRuntime, arrayObjectReference);
+
+            if (jsObject is not JSArray jsArray)
+            {
+                throw new InvalidCastException("The array constructor did not return a JSArray.");
+            }
+
+            return jsArray;
+        }
     }
 }

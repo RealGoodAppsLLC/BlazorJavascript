@@ -1208,6 +1208,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             stringBuilder.AppendLine(Indent(4) + $"{TypeIdentifiers.TypeIdentifier.String.ToInteger()} => new JSString(jsInProcessRuntime, objectReferenceNotNull),");
             stringBuilder.AppendLine(Indent(4) + $"{TypeIdentifiers.TypeIdentifier.Function.ToInteger()} => new JSFunction(jsInProcessRuntime, objectReferenceNotNull),");
             stringBuilder.AppendLine(Indent(4) + $"{TypeIdentifiers.TypeIdentifier.Boolean.ToInteger()} => new JSBoolean(jsInProcessRuntime, objectReferenceNotNull),");
+            stringBuilder.AppendLine(Indent(4) + $"{TypeIdentifiers.TypeIdentifier.Array.ToInteger()} => new JSArray(jsInProcessRuntime, objectReferenceNotNull),");
 
             var prototypeTypeIdentifier = TypeIdentifiers.GetPredefinedTypeIdentifiers().Last().ToInteger() + 1;
 
