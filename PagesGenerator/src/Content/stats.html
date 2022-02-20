@@ -1,0 +1,65 @@
+<!DOCTYPE>
+<html lang="en">
+<head>
+    <title>BlazorJavascript - Stats</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div id="graphs">
+</div>
+<script>
+    const commitStats = {{COMMIT_STATS_JSON}};
+
+    const labels = [];
+    const dataSets = {};
+    const graphsContainer = document.getElementById('graphs');
+
+    commitStats.forEach(commitInfo => {
+        labels.push(commitInfo.CommitHash);
+
+        commitInfo.Stats.forEach(statInfo => {
+            if (typeof dataSets[statInfo.StatName] === 'undefined') {
+                dataSets[statInfo.StatName] = [];
+            }
+
+            dataSets[statInfo.StatName].push(statInfo.StatValue);
+        });
+    });
+
+    for (let statName in dataSets) {
+        const statDiv = document.createElement('div');
+        const statHeading = document.createElement('h2');
+        statHeading.innerText = statName;
+
+
+        const dataSetCanvas = document.createElement('canvas');
+
+        statDiv.appendChild(statHeading);
+        statDiv.appendChild(dataSetCanvas);
+
+        graphsContainer.appendChild(statDiv);
+
+        const data = {
+            labels: labels,
+            datasets: [{
+                label: statName,
+                backgroundColor: 'rgb(255, 99, 132)',
+                borderColor: 'rgb(255, 99, 132)',
+                data: dataSets[statName],
+            }]
+        };
+
+        const config = {
+            type: 'line',
+            data: data,
+            options: {}
+        };
+
+        new Chart(
+            dataSetCanvas,
+            config
+        );
+    }
+</script>
+</body>
+</html>
