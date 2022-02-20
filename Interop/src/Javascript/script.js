@@ -141,6 +141,13 @@ if (typeof window['blazorJavascript'] === 'undefined') {
         r[k] = blazorJavascript.unwrap(v);
     };
 
+    blazorJavascript.arrayItemAtIndex = function(o, i) {
+        let unwrapped = blazorJavascript.unwrap(o);
+        let unwrappedIndex = blazorJavascript.unwrap(i);
+
+        return blazorJavascript.wrapForInterop(unwrapped[unwrappedIndex]);
+    };
+
     blazorJavascript.constructorFunction = function(i) {
         if (!i) {
             return blazorJavascript.wrapForInterop(undefined);
