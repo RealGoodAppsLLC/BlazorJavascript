@@ -4,5 +4,12 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator.Models
 {
     public sealed record ConstructorInfo(
         TypeInfo ReturnType,
-        ImmutableList<ParameterInfo> Parameters);
+        ImmutableList<ParameterInfo> Parameters)
+    {
+        public string GetNameForCSharp()
+        {
+            // FIXME: Perhaps use a convention that is a little more descriptive.
+            return "construct";
+        }
+    }
 }

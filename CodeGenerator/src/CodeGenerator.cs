@@ -21,8 +21,10 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
         public int InterfaceCount { get; private set; }
         public int GlobalCount { get; private set; }
         public int PrototypeCount { get; private set; }
+        public int ConstructorImplementationCount { get; private set; }
         public int MethodImplementationCount { get; private set; }
         public int PropertyImplementationCount { get; private set; }
+        public int InterfaceConstructorCount { get; private set; }
         public int InterfaceMethodCount { get; private set; }
         public int InterfacePropertyCount { get; private set; }
         public int AppendedGlobalsCount { get; private set; }
@@ -210,6 +212,25 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
             stringBuilder.AppendLine(Indent(1) + "{");
 
+            // We only want constructors that come from the interface body, ignoring the extends list.
+            var constructors = GetConstructorsFromInterfaceBody(
+                interfaceBodyInfo,
+                extractTypeParametersResult,
+                ImmutableList.Create<TypeInfo>(),
+                ImmutableList.Create<InterfaceInfo>(),
+                null);
+
+            foreach (var (_, constructorInfo) in constructors)
+            {
+                InterfaceConstructorCount++;
+
+                // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
+                stringBuilder.Append(Indent(2));
+                RenderConstructorBeginning(stringBuilder, constructorInfo, string.Empty);
+                stringBuilder.Append(';');
+                stringBuilder.Append(Environment.NewLine);
+            }
+
             // We only want methods that come from the interface body, ignoring the extends list.
             var methods = GetMethodsFromInterfaceBody(
                 interfaceBodyInfo,
@@ -371,6 +392,41 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             return stringBuilder.ToString();
         }
 
+        private void RenderConstructorBeginning(
+            StringBuilder stringBuilder,
+            ConstructorInfo constructorInfo,
+            string prefixTypeName)
+        {
+            stringBuilder.Append(GetRenderedTypeName(constructorInfo.ReturnType));
+            stringBuilder.Append(' ');
+
+            if (!string.IsNullOrWhiteSpace(prefixTypeName))
+            {
+                stringBuilder.Append($"{prefixTypeName}.");
+            }
+
+            stringBuilder.Append(constructorInfo.GetNameForCSharp());
+
+            stringBuilder.Append('(');
+
+            var isFirst = true;
+
+            foreach (var parameterInfo in constructorInfo.Parameters)
+            {
+                if (!isFirst)
+                {
+                    stringBuilder.Append(", ");
+                }
+
+                stringBuilder.Append(GetRenderedTypeName(parameterInfo.Type));
+                stringBuilder.Append(' ');
+                stringBuilder.Append(parameterInfo.GetNameForCSharp());
+                isFirst = false;
+            }
+
+            stringBuilder.Append(')');
+        }
+
         private void RenderMethodBeginning(
             StringBuilder stringBuilder,
             MethodInfo methodInfo,
@@ -488,6 +544,69 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             }
 
             return methods.ToImmutableList();
+        }
+
+        private ImmutableList<(InterfaceInfo? OwnerInterface, ConstructorInfo ConstructorInfo)> GetConstructorsFromInterfaceBody(
+            InterfaceBodyInfo interfaceBodyInfo,
+            ExtractTypeParametersResult? extractTypeParametersResult,
+            ImmutableList<TypeInfo> extendsList,
+            ImmutableList<InterfaceInfo> alreadyProcessedInterfaces,
+            InterfaceInfo? ownerInterface)
+        {
+            var constructors = new List<(InterfaceInfo? InterfaceInfo, ConstructorInfo ConstructorInfo)>();
+
+            if (extendsList.Any())
+            {
+                foreach (var extendTypeInfo in extendsList)
+                {
+                    // FIXME: I am probably missing something, but when we process type aliases here it causes problems in detecting methods.
+                    if (extendTypeInfo.Single == null)
+                    {
+                        continue;
+                    }
+
+                    var extendInterfaceInfo = _parsedInfo.Interfaces.FirstOrDefault(i => i.Name == extendTypeInfo.Single.Name);
+
+                    if (extendInterfaceInfo == null
+                        || alreadyProcessedInterfaces.Any(i => i.Name == extendInterfaceInfo.Name))
+                    {
+                        continue;
+                    }
+
+                    alreadyProcessedInterfaces = alreadyProcessedInterfaces.Add(extendInterfaceInfo);
+
+                    constructors.AddRange(GetConstructorsFromInterfaceBody(
+                        extendInterfaceInfo.Body,
+                        extendInterfaceInfo.ExtractTypeParametersResult,
+                        extendInterfaceInfo.ExtendsList,
+                        alreadyProcessedInterfaces,
+                        extendInterfaceInfo));
+                }
+            }
+
+            if (extractTypeParametersResult != null && extractTypeParametersResult.TypeParameters.Any())
+            {
+                return constructors.ToImmutableList();
+            }
+
+            foreach (var constructorInfo in interfaceBodyInfo.Constructors)
+            {
+                // FIXME: We are skipping any constructors that are not simple enough for a 1 to 1 translation.
+                //        For example, nothing with generics, union types, intersection types, or function parameters.
+                if (IsFinalTypeTooComplexToRender(constructorInfo.ReturnType, out _))
+                {
+                    continue;
+                }
+
+                if (constructorInfo.Parameters.Any(parameterInfo => IsFinalTypeTooComplexToRender(parameterInfo.Type, out _)))
+                {
+                    continue;
+                }
+
+                constructors.Add((ownerInterface, constructorInfo));
+            }
+
+            return constructors.ToImmutableList();
         }
 
         private ImmutableList<(InterfaceInfo? OwnerInterface, PropertyInfo PropertyInfo)> GetPropertiesFromInterfaceBody(
@@ -662,6 +781,47 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             ImmutableList<TypeInfo> extendsList)
         {
             var stringBuilder = new StringBuilder();
+
+            var constructors = GetConstructorsFromInterfaceBody(
+                interfaceBodyInfo,
+                extractTypeParametersResult,
+                extendsList,
+                ImmutableList.Create<InterfaceInfo>(),
+                null);
+
+            foreach (var (constructorInterfaceInfo, constructorInfo) in constructors)
+            {
+                // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
+                stringBuilder.Append(Indent(2));
+
+                var prefix = constructorInterfaceInfo == null
+                    ? defaultTypePrefix
+                    : GetPrefixTypeNameForInterfaceSymbolImplementations(constructorInterfaceInfo);
+
+                ConstructorImplementationCount++;
+
+                RenderConstructorBeginning(stringBuilder, constructorInfo, prefix);
+                stringBuilder.Append(Environment.NewLine);
+                stringBuilder.Append(Indent(2) + "{");
+                stringBuilder.Append(Environment.NewLine);
+
+                var parametersString = string.Join(", ", constructorInfo.Parameters.Select(p => p.GetNameForCSharp()));
+                var returnRenderedTypeName = GetRenderedTypeName(constructorInfo.ReturnType);
+
+                stringBuilder.AppendLine(Indent(3) + $"var resultObj = this.CallConstructor({parametersString});");
+
+                stringBuilder.AppendLine(Indent(3) + $"var resultAsType = resultObj as {returnRenderedTypeName};");
+                stringBuilder.AppendLine();
+                stringBuilder.AppendLine(Indent(3) + "if (resultAsType == null)");
+                stringBuilder.AppendLine(Indent(3) + "{");
+                stringBuilder.AppendLine(Indent(4) + "throw new InvalidCastException(\"Return value is no good.\");");
+                stringBuilder.AppendLine(Indent(3) + "}");
+                stringBuilder.AppendLine();
+                stringBuilder.AppendLine(Indent(3) + "return resultAsType;");
+
+                stringBuilder.Append(Indent(2) + "}");
+                stringBuilder.Append(Environment.NewLine);
+            }
 
             var methods = GetMethodsFromInterfaceBody(
                 interfaceBodyInfo,

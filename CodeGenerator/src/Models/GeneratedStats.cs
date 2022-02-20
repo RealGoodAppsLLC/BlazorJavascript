@@ -4,8 +4,10 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator.Models
         int InterfaceCount,
         int GlobalCount,
         int PrototypeCount,
+        int ConstructorImplementationCount,
         int MethodImplementationCount,
         int PropertyImplementationCount,
+        int InterfaceConstructorCount,
         int InterfaceMethodCount,
         int InterfacePropertyCount,
         int AppendedGlobalsCount);

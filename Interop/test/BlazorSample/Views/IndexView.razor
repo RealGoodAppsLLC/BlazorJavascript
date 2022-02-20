@@ -4,7 +4,7 @@
 @using RealGoodApps.BlazorJavascript.Interop.BuiltIns
 @inject IJSRuntime _jsRuntime
 
-<button @onclick="Print">Print</button>
+<button id="printButton" @onclick="Print" style="color: red">Print</button>
 
 @code {
     private void Print()
@@ -16,6 +16,12 @@
 
         var window = jsInProcessRuntime.GetWindow();
         window.console.clear();
+
+        var printButtonElement = window.document.getElementById(jsInProcessRuntime.CreateString("printButton"));
+        var computedStyle = window.getComputedStyle(printButtonElement, null);
+
+        Console.WriteLine(printButtonElement.innerText.ConvertToDotNetString());
+        Console.WriteLine(computedStyle.color.ConvertToDotNetString());
 
         var now = window.Date.now();
         Console.WriteLine($"It is: {now.IsNaN()}");
@@ -29,5 +35,18 @@
         newElement.disabled = jsInProcessRuntime.CreateBoolean(true);
         newElement.innerText = jsInProcessRuntime.CreateString("My Button");
         window.document.title = jsInProcessRuntime.CreateString("Well hello, there!");
+
+        var date = window.Date.construct();
+        var date2 = window.Date.construct(
+            jsInProcessRuntime.CreateNumberFromInt(2022),
+            jsInProcessRuntime.CreateNumberFromInt(4),
+            jsInProcessRuntime.CreateNumberFromInt(5),
+            jsInProcessRuntime.CreateNumberFromInt(3),
+            jsInProcessRuntime.CreateNumberFromInt(20),
+            jsInProcessRuntime.CreateNumberFromInt(22),
+            jsInProcessRuntime.CreateNumberFromInt(0));
+
+        Console.WriteLine(date.toLocaleString().ConvertToDotNetString());
+        Console.WriteLine(date2.toLocaleString().ConvertToDotNetString());
     }
 }

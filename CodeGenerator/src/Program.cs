@@ -82,8 +82,10 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             Console.WriteLine($"Interface count: {generator.InterfaceCount}");
             Console.WriteLine($"Global count: {generator.GlobalCount}");
             Console.WriteLine($"Prototype count: {generator.PrototypeCount}");
+            Console.WriteLine($"Constructor implementation count: {generator.ConstructorImplementationCount}");
             Console.WriteLine($"Method implementation count: {generator.MethodImplementationCount}");
             Console.WriteLine($"Property implementation count: {generator.PropertyImplementationCount}");
+            Console.WriteLine($"Interface constructor count: {generator.InterfaceConstructorCount}");
             Console.WriteLine($"Interface method count: {generator.InterfaceMethodCount}");
             Console.WriteLine($"Interface property count: {generator.InterfacePropertyCount}");
             Console.WriteLine($"Appended globals count: {generator.AppendedGlobalsCount}");
@@ -101,8 +103,10 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                     generator.InterfaceCount,
                     generator.GlobalCount,
                     generator.PrototypeCount,
+                    generator.ConstructorImplementationCount,
                     generator.MethodImplementationCount,
                     generator.PropertyImplementationCount,
+                    generator.InterfaceConstructorCount,
                     generator.InterfaceMethodCount,
                     generator.InterfacePropertyCount,
                     generator.AppendedGlobalsCount);
