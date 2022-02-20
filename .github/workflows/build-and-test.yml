@@ -34,7 +34,7 @@ jobs:
         working-directory: CodeGenerator
         run: dotnet run --project src/CodeGenerator.csproj ../TSDumper/output ../Interop/src/Generated $RUNNER_TEMP/stats.json
       - name: Package Interop
-        working-directory: Interop
+        working-directory: Interop/src
         run: dotnet pack --configuration Release
       - name: Build BlazorSample
         working-directory: Interop/test/BlazorSample
