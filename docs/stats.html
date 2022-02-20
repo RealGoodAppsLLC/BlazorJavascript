@@ -1,0 +1,65 @@
+<!DOCTYPE>
+<html lang="en">
+<head>
+    <title>BlazorJavascript - Stats</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div id="graphs">
+</div>
+<script>
+    const commitStats = [{"CommitHash":"b5b782fd01c58c748a6b2f64d42114604c9a7158","Stats":[{"StatName":"Interface count","StatValue":1614},{"StatName":"Global count","StatValue":557},{"StatName":"Prototype count","StatValue":549},{"StatName":"Method implementation count","StatValue":6312},{"StatName":"Property implementation count","StatValue":20295},{"StatName":"Interface method count","StatValue":999},{"StatName":"Interface property count","StatValue":5394},{"StatName":"Appended globals count","StatValue":557}]},{"CommitHash":"363ec6af8adb53f4e8b64105832f5ddf834836a0","Stats":[{"StatName":"Interface count","StatValue":1614},{"StatName":"Global count","StatValue":557},{"StatName":"Prototype count","StatValue":549},{"StatName":"Method implementation count","StatValue":6312},{"StatName":"Property implementation count","StatValue":20295},{"StatName":"Interface method count","StatValue":999},{"StatName":"Interface property count","StatValue":5394},{"StatName":"Appended globals count","StatValue":557}]},{"CommitHash":"911e392358991e2234f9edcbd03306185b9a76ba","Stats":[{"StatName":"Interface count","StatValue":1614},{"StatName":"Global count","StatValue":557},{"StatName":"Prototype count","StatValue":549},{"StatName":"Method implementation count","StatValue":6312},{"StatName":"Property implementation count","StatValue":20295},{"StatName":"Interface method count","StatValue":999},{"StatName":"Interface property count","StatValue":5394},{"StatName":"Appended globals count","StatValue":557}]}];
+
+    const labels = [];
+    const dataSets = {};
+    const graphsContainer = document.getElementById('graphs');
+
+    commitStats.forEach(commitInfo => {
+        labels.push(commitInfo.CommitHash);
+
+        commitInfo.Stats.forEach(statInfo => {
+            if (typeof dataSets[statInfo.StatName] === 'undefined') {
+                dataSets[statInfo.StatName] = [];
+            }
+
+            dataSets[statInfo.StatName].push(statInfo.StatValue);
+        });
+    });
+
+    for (let statName in dataSets) {
+        const statDiv = document.createElement('div');
+        const statHeading = document.createElement('h2');
+        statHeading.innerText = statName;
+
+
+        const dataSetCanvas = document.createElement('canvas');
+
+        statDiv.appendChild(statHeading);
+        statDiv.appendChild(dataSetCanvas);
+
+        graphsContainer.appendChild(statDiv);
+
+        const data = {
+            labels: labels,
+            datasets: [{
+                label: statName,
+                backgroundColor: 'rgb(255, 99, 132)',
+                borderColor: 'rgb(255, 99, 132)',
+                data: dataSets[statName],
+            }]
+        };
+
+        const config = {
+            type: 'line',
+            data: data,
+            options: {}
+        };
+
+        new Chart(
+            dataSetCanvas,
+            config
+        );
+    }
+</script>
+</body>
+</html>
