@@ -12,6 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          path: 'repo'
+          fetch-depth: 0
       - name: Install Node.js
         uses: actions/setup-node@v2
         with:
@@ -22,20 +25,37 @@ jobs:
           dotnet-version: | 
             6.0.x
       - name: Install TSDumper Dependencies
-        working-directory: TSDumper
+        working-directory: repo/TSDumper
         run: npm install
       - name: Run TSDumper
-        working-directory: TSDumper
+        working-directory: repo/TSDumper
         run: npm run dump
       - name: Run TSDumper
-        working-directory: TSDumper
+        working-directory: repo/TSDumper
         run: npm run dump
+      - name: Checkout Commit Stats
+        uses: actions/checkout@v2
+        with:
+          ref: 'commit-stats'
+          token: '${{ secrets.SERVICE_PAT }}'
+          path: 'commit-stats'
       - name: Run CodeGenerator
-        working-directory: CodeGenerator
-        run: dotnet run --project src/CodeGenerator.csproj ../TSDumper/output ../Interop/src/Generated $RUNNER_TEMP/stats.json
+        working-directory: repo/CodeGenerator
+        run: dotnet run --project src/CodeGenerator.csproj ../TSDumper/output ../Interop/src/Generated $GITHUB_WORKSPACE/commit-stats/$GITHUB_SHA/stats.json
       - name: Package Interop
-        working-directory: Interop/src
+        working-directory: repo/Interop/src
         run: dotnet pack --configuration Release
       - name: Build BlazorSample
-        working-directory: Interop/test/BlazorSample
+        working-directory: repo/Interop/test/BlazorSample
         run: dotnet build
+      - name: Stage Stats
+        working-directory: commit-stats
+        run: git add $GITHUB_SHA/stats.json
+      - name: Commit Stats
+        working-directory: commit-stats
+        run: git commit -m "Stats for $GITHUB_SHA"
+      - name: Push Stats
+        working-directory: commit-stats
+        run: git push origin commit-stats
+      
+      
