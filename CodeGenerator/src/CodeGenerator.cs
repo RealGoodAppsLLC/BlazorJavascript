@@ -598,6 +598,11 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             {
                 // FIXME: We are skipping any constructors that are not simple enough for a 1 to 1 translation.
                 //        For example, nothing with generics, union types, intersection types, or function parameters.
+                if (constructorInfo.ExtractTypeParametersResult.TypeParameters.Any())
+                {
+                    continue;
+                }
+
                 if (IsFinalTypeTooComplexToRender(ProcessTypeAliasesAndRewriteNulls(constructorInfo.ReturnType)))
                 {
                     continue;

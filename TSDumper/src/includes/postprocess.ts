@@ -75,11 +75,16 @@ export const runPostProcessingInterfaceBody = (interfaceInfo: InterfaceBodyInfo)
     interfaceInfo.constructors.forEach(constructor => {
         let keepConstructor = true;
 
-        constructor.parameters.forEach(constructorParameter => {
-            if (recursiveCheckForNonSimpleTypeArgument(constructorParameter.type)) {
-                keepConstructor = false;
-            }
-        });
+        if (constructor.extractTypeParametersResult.anyConstraintsAreNotSimple) {
+            keepConstructor = false;
+        }
+        else {
+            constructor.parameters.forEach(constructorParameter => {
+                if (recursiveCheckForNonSimpleTypeArgument(constructorParameter.type)) {
+                    keepConstructor = false;
+                }
+            });
+        }
 
         if (keepConstructor) {
             postProcessedConstructors.push(constructor);

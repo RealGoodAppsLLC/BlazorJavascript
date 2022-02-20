@@ -34,6 +34,7 @@ export const extractInterfaceBody = (
         if (ts.isConstructSignatureDeclaration(member) && member.type) {
             constructors.push({
                 returnType: extractTypeInfo(member.type),
+                extractTypeParametersResult: extractTypeParameters(member.typeParameters),
                 parameters: extractParameters(member.parameters),
             });
 
