@@ -7,8 +7,11 @@
     "dump": "ts-node src/tsdumper.ts"
   },
   "dependencies": {
-    "typescript": "4.5.5",
-    "ts-node": "10.5.0"
+    "ts-node": "10.5.0",
+    "typescript": "4.5.5"
+  },
+  "devDependencies": {
+    "@types/node": "17.0.18"
   },
   "author": "RealGoodApps, LLC",
   "license": "MIT"
