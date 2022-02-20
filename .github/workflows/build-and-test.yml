@@ -60,5 +60,30 @@ jobs:
       - name: Push Stats
         working-directory: commit-stats
         run: git push origin commit-stats
-      
-      
+      - name: Get All Commit Hashes in Main
+        working-directory: repo
+        run: git --no-pager log --reverse --oneline --pretty='%H' > $GITHUB_WORKSPACE/commits.txt
+      - name: Checkout GH Pages
+        uses: actions/checkout@v2
+        with:
+          ref: 'gh-pages'
+          token: '${{ secrets.SERVICE_PAT }}'
+          path: 'gh-pages'
+      - name: Remove Existing Docs Directory
+        working-directory: gh-pages
+        run: rm -rf docs
+      - name: Run PagesGenerator
+        working-directory: repo/PagesGenerator/src
+        run: dotnet run --project PagesGenerator.csproj $GITHUB_WORKSPACE/commits.txt $GITHUB_WORKSPACE/commit-stats $GITHUB_WORKSPACE/gh-pages/docs
+      - name: Stage Pages
+        working-directory: gh-pages/docs
+        run: git add -A
+      - name: Commit Pages
+        working-directory: gh-pages
+        run: |
+          git config --global user.email "blazorjavascriptservice@gmail.com"
+          git config --global user.name "BlazorJavascript Service Account"
+          git commit -m "Pages for $GITHUB_SHA"
+      - name: Push Pages
+        working-directory: gh-pages
+        run: git push origin gh-pages
