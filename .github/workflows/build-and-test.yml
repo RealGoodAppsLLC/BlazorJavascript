@@ -30,9 +30,6 @@ jobs:
       - name: Run TSDumper
         working-directory: repo/TSDumper
         run: npm run dump
-      - name: Run TSDumper
-        working-directory: repo/TSDumper
-        run: npm run dump
       - name: Checkout Commit Stats
         uses: actions/checkout@v2
         with:
