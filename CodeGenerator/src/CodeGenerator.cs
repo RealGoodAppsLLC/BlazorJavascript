@@ -1047,6 +1047,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 return new ProcessedTypeInfo(typeInfo);
             }
 
+            var anyTypeAliases = false;
             while (true)
             {
                 // FIXME: We are assuming that you can only type alias the most simple case for now.
@@ -1055,10 +1056,13 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
                 if (typeAlias == null)
                 {
-                    return new ProcessedTypeInfo(typeInfo);
+                    return anyTypeAliases
+                        ? ProcessTypeAliasesAndRewriteNulls(typeInfo)
+                        : new ProcessedTypeInfo(typeInfo);
                 }
 
                 typeInfo = typeAlias.AliasType;
+                anyTypeAliases = true;
             }
         }
 
