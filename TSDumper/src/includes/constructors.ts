@@ -1,5 +1,6 @@
-import { ParameterInfo, TypeInfo } from "./interfaces";
-import {ExtractTypeParametersResult} from "./typeparameters";
+import { ExtractTypeParametersResult } from "./typeparameters";
+import { TypeInfo } from "./types";
+import { ParameterInfo } from "./parameters";
 
 export interface ConstructorInfo {
     returnType: TypeInfo;

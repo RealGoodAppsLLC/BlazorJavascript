@@ -64,6 +64,36 @@ const recursiveCheckForNonSimpleTypeArgument = (result: TypeInfo): boolean => {
     return anyNodeNotSimple;
 };
 
+const postProcessShouldKeepConstructor = (constructor: ConstructorInfo): boolean => {
+    if (constructor.extractTypeParametersResult.anyConstraintsAreNotSimple) {
+        return false;
+    }
+
+    return !constructor.parameters.some(constructorParameter => {
+        return recursiveCheckForNonSimpleTypeArgument(constructorParameter.type);
+    });
+};
+
+const postProcessShouldKeepMethod = (methodInfo: MethodInfo): boolean => {
+    if (methodInfo.extractTypeParametersResult.anyConstraintsAreNotSimple) {
+        return false;
+    }
+
+    if (recursiveCheckForNonSimpleTypeArgument(methodInfo.returnType)) {
+        return false;
+    }
+
+    return !methodInfo.parameters.some(parameterInfo => {
+        return recursiveCheckForNonSimpleTypeArgument(parameterInfo.type);
+    });
+};
+
+const postProcessShouldKeepSetAccessor = (setAccessor: SetAccessorInfo): boolean => {
+    return !setAccessor.parameters.some(parameter => {
+        return recursiveCheckForNonSimpleTypeArgument(parameter.type);
+    });
+};
+
 export const runPostProcessingInterfaceBody = (interfaceInfo: InterfaceBodyInfo): InterfaceBodyInfo => {
     const postProcessedMethods: MethodInfo[] = [];
     const postProcessedProperties: PropertyInfo[] = [];
@@ -73,18 +103,7 @@ export const runPostProcessingInterfaceBody = (interfaceInfo: InterfaceBodyInfo)
     const postProcessedSetAccessors: SetAccessorInfo[] = [];
 
     interfaceInfo.constructors.forEach(constructor => {
-        let keepConstructor = true;
-
-        if (constructor.extractTypeParametersResult.anyConstraintsAreNotSimple) {
-            keepConstructor = false;
-        }
-        else {
-            constructor.parameters.forEach(constructorParameter => {
-                if (recursiveCheckForNonSimpleTypeArgument(constructorParameter.type)) {
-                    keepConstructor = false;
-                }
-            });
-        }
+        let keepConstructor = postProcessShouldKeepConstructor(constructor);
 
         if (keepConstructor) {
             postProcessedConstructors.push(constructor);
@@ -92,21 +111,7 @@ export const runPostProcessingInterfaceBody = (interfaceInfo: InterfaceBodyInfo)
     });
 
     interfaceInfo.methods.forEach(methodInfo => {
-        let keepMethod = true;
-
-        if (methodInfo.extractTypeParametersResult.anyConstraintsAreNotSimple) {
-            keepMethod = false;
-        }
-        else if (recursiveCheckForNonSimpleTypeArgument(methodInfo.returnType)) {
-            keepMethod = false;
-        }
-        else {
-            methodInfo.parameters.forEach(parameterInfo => {
-                if (recursiveCheckForNonSimpleTypeArgument(parameterInfo.type)) {
-                    keepMethod = false;
-                }
-            });
-        }
+        let keepMethod = postProcessShouldKeepMethod(methodInfo);
 
         if (keepMethod) {
             postProcessedMethods.push(methodInfo);
@@ -139,14 +144,7 @@ export const runPostProcessingInterfaceBody = (interfaceInfo: InterfaceBodyInfo)
     });
 
     interfaceInfo.setAccessors.forEach(setAccessor => {
-        let keepSetAccessor = true;
-
-        setAccessor.parameters.forEach(parameter => {
-            if (recursiveCheckForNonSimpleTypeArgument(parameter.type)) {
-                keepSetAccessor = false;
-                return;
-            }
-        });
+        let keepSetAccessor = postProcessShouldKeepSetAccessor(setAccessor);
 
         if (keepSetAccessor) {
             postProcessedSetAccessors.push(setAccessor);
