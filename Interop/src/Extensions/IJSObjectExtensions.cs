@@ -6,17 +6,12 @@ using RealGoodApps.BlazorJavascript.Interop.Factories;
 
 namespace RealGoodApps.BlazorJavascript.Interop.Extensions
 {
-    public static class IJSObjectExtensions
+    public static partial class IJSObjectExtensions
     {
-        public static IJSObject? CallConstructor(
-            this IJSObject self,
+        public static IJSObjectReference? CallConstructorInternal(
+            IJSObject self,
             params object?[]? args)
         {
-            if (self is JSUndefined)
-            {
-                return self;
-            }
-
             var allParams = new List<object?>
             {
                 self.ObjectReference,
@@ -29,8 +24,7 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
                     .ToList());
             }
 
-            var result = self.Runtime.Invoke<IJSObjectReference>("__blazorJavascript_constructorFunction", allParams.ToArray());
-            return JSObjectFactory.FromRuntimeObjectReference(self.Runtime, result);
+            return self.Runtime.Invoke<IJSObjectReference?>("__blazorJavascript_constructorFunction", allParams.ToArray());
         }
 
         public static IJSObject? GetPropertyOfObject(

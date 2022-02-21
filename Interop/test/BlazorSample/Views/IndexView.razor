@@ -49,15 +49,26 @@
         Console.WriteLine(date.toLocaleString().ConvertToDotNetString());
         Console.WriteLine(date2.toLocaleString().ConvertToDotNetString());
 
+        var anchorElement = window.document.createElement(jsInProcessRuntime.CreateString("a"), null) as IHTMLAnchorElement;
+        anchorElement.setAttribute(jsInProcessRuntime.CreateString("href"), jsInProcessRuntime.CreateString("https://google.com"));
+        var attributes = anchorElement.getAttributeNames();
+        var firstAttributeName = attributes.GetItemAtIndex(jsInProcessRuntime.CreateNumberFromInt(0));
+        Console.WriteLine($"First attribute name is: {firstAttributeName.ConvertToDotNetString()}");
         var someArray = jsInProcessRuntime.CreateArray();
-        var initialLength = someArray.length;
-        Console.WriteLine($"Initial array length: {initialLength.ConvertToDotNetInt()}");
-        var pushResult1 = someArray.PushItem(date);
-        Console.WriteLine($"Push result 1: {pushResult1.ConvertToDotNetInt()}");
-        var pushResult2 = someArray.PushItem(date2);
-        Console.WriteLine($"Push result 2: {pushResult2.ConvertToDotNetInt()}");
+        var magicArray = window.Array.construct(jsInProcessRuntime.CreateNumberFromInt(0));
 
-        var secondItem = someArray.GetItemAtIndex(jsInProcessRuntime.CreateNumberFromInt(1)) as IDate;
-        Console.WriteLine(secondItem.toLocaleDateString().ConvertToDotNetString());
+        foreach (var theArray in new IJSArray[] { someArray, magicArray })
+        {
+            var initialLength = theArray.length;
+            Console.WriteLine($"Initial array length: {initialLength.ConvertToDotNetInt()}");
+            var pushResult1 = theArray.PushItem(date);
+            Console.WriteLine($"Push result 1: {pushResult1.ConvertToDotNetInt()}");
+            var pushResult2 = theArray.PushItem(date2);
+            Console.WriteLine($"Push result 2: {pushResult2.ConvertToDotNetInt()}");
+
+            var secondItem = theArray.GetItemAtIndex(jsInProcessRuntime.CreateNumberFromInt(1)) as IDate;
+            Console.WriteLine(secondItem.toLocaleDateString().ConvertToDotNetString());
+        }
+
     }
 }

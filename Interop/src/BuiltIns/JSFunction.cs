@@ -2,11 +2,10 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.JSInterop;
 using RealGoodApps.BlazorJavascript.Interop.Extensions;
-using RealGoodApps.BlazorJavascript.Interop.Factories;
 
 namespace RealGoodApps.BlazorJavascript.Interop.BuiltIns
 {
-    public sealed class JSFunction : IJSObject
+    public sealed partial class JSFunction : IJSObject
     {
         public JSFunction(
             IJSInProcessRuntime jsInProcessRuntime,
@@ -19,7 +18,7 @@ namespace RealGoodApps.BlazorJavascript.Interop.BuiltIns
         public IJSInProcessRuntime Runtime { get; }
         public IJSObjectReference ObjectReference { get; }
 
-        public IJSObject? Invoke(
+        private IJSObjectReference? InvokeInternal(
             IJSObject? thisObject,
             params object?[]? args)
         {
@@ -36,8 +35,7 @@ namespace RealGoodApps.BlazorJavascript.Interop.BuiltIns
                     .ToList());
             }
 
-            var result = Runtime.Invoke<IJSObjectReference>("__blazorJavascript_invokeFunction", allParams.ToArray());
-            return JSObjectFactory.FromRuntimeObjectReference(Runtime, result);
+            return Runtime.Invoke<IJSObjectReference?>("__blazorJavascript_invokeFunction", allParams.ToArray());
         }
     }
 }
