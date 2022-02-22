@@ -1,7 +1,7 @@
-using System.Collections.Immutable;
+using RealGoodApps.ValueImmutableCollections;
 
 namespace RealGoodApps.BlazorJavascript.CodeGenerator.Models
 {
     public sealed record IntersectionTypeInfo(
-        ImmutableList<TypeInfo> Types);
+        ValueImmutableList<TypeInfo> Types);
 }

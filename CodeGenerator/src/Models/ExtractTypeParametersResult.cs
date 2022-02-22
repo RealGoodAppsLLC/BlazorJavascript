@@ -1,8 +1,8 @@
-using System.Collections.Immutable;
+using RealGoodApps.ValueImmutableCollections;
 
 namespace RealGoodApps.BlazorJavascript.CodeGenerator.Models
 {
     public sealed record ExtractTypeParametersResult(
-        ImmutableList<TypeParameter> TypeParameters,
+        ValueImmutableList<TypeParameter> TypeParameters,
         bool AnyConstraintsAreNotSimple);
 }

@@ -1,12 +1,12 @@
-using System.Collections.Immutable;
+using RealGoodApps.ValueImmutableCollections;
 
 namespace RealGoodApps.BlazorJavascript.CodeGenerator.Models
 {
     public record InterfaceBodyInfo(
-        ImmutableList<ConstructorInfo> Constructors,
-        ImmutableList<PropertyInfo> Properties,
-        ImmutableList<MethodInfo> Methods,
-        ImmutableList<IndexerInfo> Indexers,
-        ImmutableList<GetAccessorInfo> GetAccessors,
-        ImmutableList<SetAccessorInfo> SetAccessors);
+        ValueImmutableList<ConstructorInfo> Constructors,
+        ValueImmutableList<PropertyInfo> Properties,
+        ValueImmutableList<MethodInfo> Methods,
+        ValueImmutableList<IndexerInfo> Indexers,
+        ValueImmutableList<GetAccessorInfo> GetAccessors,
+        ValueImmutableList<SetAccessorInfo> SetAccessors);
 }

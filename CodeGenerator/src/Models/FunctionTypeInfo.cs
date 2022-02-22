@@ -1,9 +1,9 @@
-using System.Collections.Immutable;
+using RealGoodApps.ValueImmutableCollections;
 
 namespace RealGoodApps.BlazorJavascript.CodeGenerator.Models
 {
     public sealed record FunctionTypeInfo(
         ExtractTypeParametersResult ExtractTypeParametersResult,
-        ImmutableList<ParameterInfo> Parameters,
+        ValueImmutableList<ParameterInfo> Parameters,
         TypeInfo ReturnType);
 }

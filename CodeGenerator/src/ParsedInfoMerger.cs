@@ -1,13 +1,13 @@
-using System.Collections.Immutable;
 using RealGoodApps.BlazorJavascript.CodeGenerator.Models;
+using RealGoodApps.ValueImmutableCollections;
 
 namespace RealGoodApps.BlazorJavascript.CodeGenerator
 {
     public class ParsedInfoMerger
     {
-        private readonly ImmutableList<ParsedInfo> _parsedInfoList;
+        private readonly ValueImmutableList<ParsedInfo> _parsedInfoList;
 
-        public ParsedInfoMerger(ImmutableList<ParsedInfo> parsedInfoList)
+        public ParsedInfoMerger(ValueImmutableList<ParsedInfo> parsedInfoList)
         {
             _parsedInfoList = parsedInfoList;
         }
@@ -19,14 +19,14 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             return new ParsedInfo(
                 _parsedInfoList
                     .SelectMany(parsedInfo => parsedInfo.GlobalVariables)
-                    .ToImmutableList(),
+                    .ToValueImmutableList(),
                 interfaces,
                 _parsedInfoList
                     .SelectMany(parsedInfo => parsedInfo.TypeAliases)
-                    .ToImmutableList());
+                    .ToValueImmutableList());
         }
 
-        private ImmutableList<InterfaceInfo> MergeInterfaces()
+        private ValueImmutableList<InterfaceInfo> MergeInterfaces()
         {
             // We are (roughly) following this: https://www.typescriptlang.org/docs/handbook/declaration-merging.html#merging-interfaces
             var interfaces = new Dictionary<string, InterfaceInfo>();
@@ -51,7 +51,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                             .ExtendsList
                             .AddRange(@interface.ExtendsList)
                             .Distinct()
-                            .ToImmutableList(),
+                            .ToValueImmutableList(),
                         new InterfaceBodyInfo(
                             existingInterface
                                 .Body
@@ -62,7 +62,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                                 .Properties
                                 .AddRange(@interface.Body.Properties)
                                 .DistinctBy(interfaceInfo => interfaceInfo.Name)
-                                .ToImmutableList(),
+                                .ToValueImmutableList(),
                             existingInterface
                                 .Body
                                 .Methods
@@ -84,7 +84,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 }
             }
 
-            return interfaces.Values.ToImmutableList();
+            return interfaces.Values.ToValueImmutableList();
         }
     }
 }

@@ -1,4 +1,4 @@
-using System.Collections.Immutable;
+using RealGoodApps.ValueImmutableCollections;
 using System.Text;
 using Newtonsoft.Json;
 using RealGoodApps.BlazorJavascript.CodeGenerator.Models;
@@ -135,7 +135,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                     var inlineInterfaceContents = GenerateInterfaceFileContents(
                         $"{globalDefinedOutside.GlobalVariableInfo.Name}Global",
                         null,
-                        ImmutableList.Create<TypeInfo>(),
+                        ValueImmutableList.Create<TypeInfo>(),
                         globalDefinedOutside.GlobalVariableInfo.InlineInterface,
                         false);
 
@@ -153,7 +153,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 }
             }
 
-            var javascriptContents = GenerateJavascriptFileContents(prototypes.ToImmutableList());
+            var javascriptContents = GenerateJavascriptFileContents(prototypes.ToValueImmutableList());
 
             var javascriptOutputPath = Path.Combine(
                 _outputDirectory,
@@ -167,7 +167,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
             File.WriteAllText(javascriptOutputPath, javascriptContents);
 
-            var objectFactoryContents = GenerateObjectFactoryFileContents(prototypes.ToImmutableList());
+            var objectFactoryContents = GenerateObjectFactoryFileContents(prototypes.ToValueImmutableList());
 
             var objectFactoryOutputPath = Path.Combine(
                 _outputDirectory,
@@ -260,7 +260,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
         private string GenerateInterfaceFileContents(
             string interfaceName,
             ExtractTypeParametersResult? extractTypeParametersResult,
-            ImmutableList<TypeInfo> interfaceExtendsList,
+            ValueImmutableList<TypeInfo> interfaceExtendsList,
             InterfaceBodyInfo interfaceBodyInfo,
             bool isGlobalThis)
         {
@@ -288,7 +288,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 .Where(extendTypeInfo => extendTypeInfo.Single != null)
                 .Select(extendedTypeInfo => GetRenderedTypeName(ProcessTypeAliasesAndRewriteNulls(extendedTypeInfo)))
                 .Append("IJSObject")
-                .ToImmutableList();
+                .ToValueImmutableList();
             stringBuilder.Append($" : {string.Join(", ", extendsList)}");
             stringBuilder.Append(Environment.NewLine);
 
@@ -298,8 +298,8 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             var constructors = GetConstructorsFromInterfaceBody(
                 interfaceBodyInfo,
                 extractTypeParametersResult,
-                ImmutableList.Create<TypeInfo>(),
-                ImmutableList.Create<InterfaceInfo>(),
+                ValueImmutableList.Create<TypeInfo>(),
+                ValueImmutableList.Create<InterfaceInfo>(),
                 null);
 
             foreach (var (_, constructorInfo) in constructors)
@@ -317,8 +317,8 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             var methods = GetMethodsFromInterfaceBody(
                 interfaceBodyInfo,
                 extractTypeParametersResult,
-                ImmutableList.Create<TypeInfo>(),
-                ImmutableList.Create<InterfaceInfo>(),
+                ValueImmutableList.Create<TypeInfo>(),
+                ValueImmutableList.Create<InterfaceInfo>(),
                 null);
 
             foreach (var (_, methodInfo) in methods)
@@ -336,8 +336,8 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             var properties = GetPropertiesFromInterfaceBody(
                 interfaceBodyInfo,
                 extractTypeParametersResult,
-                ImmutableList.Create<TypeInfo>(),
-                ImmutableList.Create<InterfaceInfo>(),
+                ValueImmutableList.Create<TypeInfo>(),
+                ValueImmutableList.Create<InterfaceInfo>(),
                 null);
 
             foreach (var (_, propertyInfo) in properties)
@@ -601,11 +601,11 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             stringBuilder.Append(propertyInfo.GetNameForCSharp());
         }
 
-        private ImmutableList<(InterfaceInfo? OwnerInterface, MethodInfo MethodInfo)> GetMethodsFromInterfaceBody(
+        private ValueImmutableList<(InterfaceInfo? OwnerInterface, MethodInfo MethodInfo)> GetMethodsFromInterfaceBody(
             InterfaceBodyInfo interfaceBodyInfo,
             ExtractTypeParametersResult? extractTypeParametersResult,
-            ImmutableList<TypeInfo> extendsList,
-            ImmutableList<InterfaceInfo> alreadyProcessedInterfaces,
+            ValueImmutableList<TypeInfo> extendsList,
+            ValueImmutableList<InterfaceInfo> alreadyProcessedInterfaces,
             InterfaceInfo? ownerInterface)
         {
             var methods = new List<(InterfaceInfo? InterfaceInfo, MethodInfo MethodInfo)>();
@@ -641,7 +641,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
             if (extractTypeParametersResult != null && extractTypeParametersResult.TypeParameters.Any())
             {
-                return methods.ToImmutableList();
+                return methods.ToValueImmutableList();
             }
 
             foreach (var methodInfo in interfaceBodyInfo.Methods)
@@ -666,14 +666,14 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 methods.Add((ownerInterface, methodInfo));
             }
 
-            return methods.ToImmutableList();
+            return methods.ToValueImmutableList();
         }
 
-        private ImmutableList<(InterfaceInfo? OwnerInterface, ConstructorInfo ConstructorInfo)> GetConstructorsFromInterfaceBody(
+        private ValueImmutableList<(InterfaceInfo? OwnerInterface, ConstructorInfo ConstructorInfo)> GetConstructorsFromInterfaceBody(
             InterfaceBodyInfo interfaceBodyInfo,
             ExtractTypeParametersResult? extractTypeParametersResult,
-            ImmutableList<TypeInfo> extendsList,
-            ImmutableList<InterfaceInfo> alreadyProcessedInterfaces,
+            ValueImmutableList<TypeInfo> extendsList,
+            ValueImmutableList<InterfaceInfo> alreadyProcessedInterfaces,
             InterfaceInfo? ownerInterface)
         {
             var constructors = new List<(InterfaceInfo? InterfaceInfo, ConstructorInfo ConstructorInfo)>();
@@ -709,7 +709,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
             if (extractTypeParametersResult != null && extractTypeParametersResult.TypeParameters.Any())
             {
-                return constructors.ToImmutableList();
+                return constructors.ToValueImmutableList();
             }
 
             foreach (var constructorInfo in interfaceBodyInfo.Constructors)
@@ -734,14 +734,14 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 constructors.Add((ownerInterface, constructorInfo));
             }
 
-            return constructors.ToImmutableList();
+            return constructors.ToValueImmutableList();
         }
 
-        private ImmutableList<(InterfaceInfo? OwnerInterface, PropertyInfo PropertyInfo)> GetPropertiesFromInterfaceBody(
+        private ValueImmutableList<(InterfaceInfo? OwnerInterface, PropertyInfo PropertyInfo)> GetPropertiesFromInterfaceBody(
             InterfaceBodyInfo interfaceBodyInfo,
             ExtractTypeParametersResult? extractTypeParametersResult,
-            ImmutableList<TypeInfo> extendsList,
-            ImmutableList<InterfaceInfo> alreadyProcessedInterfaces,
+            ValueImmutableList<TypeInfo> extendsList,
+            ValueImmutableList<InterfaceInfo> alreadyProcessedInterfaces,
             InterfaceInfo? ownerInterface)
         {
             var properties = new List<(InterfaceInfo? OwnerInterface, PropertyInfo PropertyInfo)>();
@@ -773,7 +773,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
             if (extractTypeParametersResult != null && extractTypeParametersResult.TypeParameters.Any())
             {
-                return properties.ToImmutableList();
+                return properties.ToValueImmutableList();
             }
 
             foreach (var propertyInfo in interfaceBodyInfo.Properties)
@@ -788,10 +788,10 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 properties.Add((ownerInterface, propertyInfo));
             }
 
-            return properties.ToImmutableList();
+            return properties.ToValueImmutableList();
         }
 
-        private ImmutableList<GetAccessorInfo> GetGetAccessorsFromInterfaceRecursively(InterfaceInfo interfaceInfo)
+        private ValueImmutableList<GetAccessorInfo> GetGetAccessorsFromInterfaceRecursively(InterfaceInfo interfaceInfo)
         {
             var allGetAccessors = new List<GetAccessorInfo>();
 
@@ -813,7 +813,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             }
 
             allGetAccessors.AddRange(interfaceInfo.Body.GetAccessors);
-            return allGetAccessors.ToImmutableList();
+            return allGetAccessors.ToValueImmutableList();
         }
 
         private string GenerateGlobalVariableFileContents(GlobalDefinedOutsideOfGlobalThisInterface globalDefinedOutside)
@@ -906,7 +906,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             string defaultTypePrefix,
             InterfaceBodyInfo interfaceBodyInfo,
             ExtractTypeParametersResult? extractTypeParametersResult,
-            ImmutableList<TypeInfo> extendsList)
+            ValueImmutableList<TypeInfo> extendsList)
         {
             var stringBuilder = new StringBuilder();
 
@@ -914,7 +914,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 interfaceBodyInfo,
                 extractTypeParametersResult,
                 extendsList,
-                ImmutableList.Create<InterfaceInfo>(),
+                ValueImmutableList.Create<InterfaceInfo>(),
                 null);
 
             foreach (var (constructorInterfaceInfo, constructorInfo) in constructors)
@@ -958,7 +958,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 interfaceBodyInfo,
                 extractTypeParametersResult,
                 extendsList,
-                ImmutableList.Create<InterfaceInfo>(),
+                ValueImmutableList.Create<InterfaceInfo>(),
                 null);
 
             foreach (var (methodInterfaceInfo, methodInfo) in methods)
@@ -1014,7 +1014,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 interfaceBodyInfo,
                 extractTypeParametersResult,
                 extendsList,
-                ImmutableList.Create<InterfaceInfo>(),
+                ValueImmutableList.Create<InterfaceInfo>(),
                 null);
 
             foreach (var (propertyInterfaceInfo, propertyInfo) in properties)
@@ -1129,7 +1129,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 .TypeArguments
                 .Select(typeArgument => typeArgument.Single)
                 .WhereNotNull()
-                .ToImmutableList();
+                .ToValueImmutableList();
 
             if (typeArguments.Any())
             {
@@ -1236,7 +1236,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             }
 
             return new TypeInfo(
-                new UnionTypeInfo(finalTypeList.ToImmutableList()),
+                new UnionTypeInfo(finalTypeList.ToValueImmutableList()),
                 null,
                 null,
                 null,
@@ -1263,7 +1263,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             return false;
         }
 
-        private string GenerateJavascriptFileContents(ImmutableList<(InterfaceInfo InterfaceInfo, GlobalVariableInfo GlobalVariableInfo)> prototypes)
+        private string GenerateJavascriptFileContents(ValueImmutableList<(InterfaceInfo InterfaceInfo, GlobalVariableInfo GlobalVariableInfo)> prototypes)
         {
             var stringBuilder = new StringBuilder();
 
@@ -1356,7 +1356,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             return stringBuilder.ToString();
         }
 
-        public string GenerateObjectFactoryFileContents(ImmutableList<(InterfaceInfo InterfaceInfo, GlobalVariableInfo GlobalVariableInfo)> prototypes)
+        public string GenerateObjectFactoryFileContents(ValueImmutableList<(InterfaceInfo InterfaceInfo, GlobalVariableInfo GlobalVariableInfo)> prototypes)
         {
             var stringBuilder = new StringBuilder();
             stringBuilder.AppendLine("/// <auto-generated />");
@@ -1382,7 +1382,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
         }
 
         private string GenerateObjectFactoryOverload(
-            ImmutableList<(InterfaceInfo InterfaceInfo, GlobalVariableInfo GlobalVariableInfo)> prototypes,
+            ValueImmutableList<(InterfaceInfo InterfaceInfo, GlobalVariableInfo GlobalVariableInfo)> prototypes,
             int genericArgumentCount)
         {
             var stringBuilder = new StringBuilder();
@@ -1504,16 +1504,16 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             string InterfaceTypeName,
             InterfaceBodyInfo InterfaceBodyInfo,
             ExtractTypeParametersResult? ExtractTypeParametersResult,
-            ImmutableList<TypeInfo> ExtendsList);
+            ValueImmutableList<TypeInfo> ExtendsList);
 
-        private ImmutableList<GlobalDefinedOutsideOfGlobalThisInterface> GetGlobalsDefinedOutsideOfGlobalThisInterface()
+        private ValueImmutableList<GlobalDefinedOutsideOfGlobalThisInterface> GetGlobalsDefinedOutsideOfGlobalThisInterface()
         {
             var globalThisInterface = _parsedInfo.Interfaces.First(interfaceInfo => interfaceInfo.Name == GetGlobalThisInterfaceName());
             var allProperties = GetPropertiesFromInterfaceBody(
                 globalThisInterface.Body,
                 globalThisInterface.ExtractTypeParametersResult,
                 globalThisInterface.ExtendsList,
-                ImmutableList.Create<InterfaceInfo>(),
+                ValueImmutableList.Create<InterfaceInfo>(),
                 null);
             var allWindowGetters = GetGetAccessorsFromInterfaceRecursively(globalThisInterface);
 
@@ -1535,7 +1535,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                         $"I{globalVariableInfo.Name}Global",
                         globalVariableInfo.InlineInterface,
                         null,
-                        ImmutableList.Create<TypeInfo>()));
+                        ValueImmutableList.Create<TypeInfo>()));
 
                     continue;
                 }
@@ -1567,7 +1567,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                     globalInterfaceType.ExtendsList));
             }
 
-            return result.ToImmutableList();
+            return result.ToValueImmutableList();
         }
 
         private string GetGlobalThisInterfaceName()

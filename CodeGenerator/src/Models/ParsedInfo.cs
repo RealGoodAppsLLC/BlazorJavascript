@@ -1,9 +1,9 @@
-using System.Collections.Immutable;
+using RealGoodApps.ValueImmutableCollections;
 
 namespace RealGoodApps.BlazorJavascript.CodeGenerator.Models
 {
     public sealed record ParsedInfo(
-        ImmutableList<GlobalVariableInfo> GlobalVariables,
-        ImmutableList<InterfaceInfo> Interfaces,
-        ImmutableList<TypeAliasInfo> TypeAliases);
+        ValueImmutableList<GlobalVariableInfo> GlobalVariables,
+        ValueImmutableList<InterfaceInfo> Interfaces,
+        ValueImmutableList<TypeAliasInfo> TypeAliases);
 }

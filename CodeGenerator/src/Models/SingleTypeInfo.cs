@@ -1,4 +1,4 @@
-using System.Collections.Immutable;
+using RealGoodApps.ValueImmutableCollections;
 
 namespace RealGoodApps.BlazorJavascript.CodeGenerator.Models
 {
@@ -7,10 +7,10 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator.Models
         StringLiteralInfo? StringLiteral,
         BooleanLiteralInfo? BooleanLiteral,
         NumberLiteralInfo? NumberLiteral,
-        ImmutableList<TypeInfo> TypeArguments,
+        ValueImmutableList<TypeInfo> TypeArguments,
         bool IsUnhandled)
     {
-        public string? GetNameForCSharp(ImmutableList<InterfaceInfo> interfaces)
+        public string? GetNameForCSharp(ValueImmutableList<InterfaceInfo> interfaces)
         {
             if (this.Name == "undefined")
             {

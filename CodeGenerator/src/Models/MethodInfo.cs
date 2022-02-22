@@ -1,4 +1,4 @@
-using System.Collections.Immutable;
+using RealGoodApps.ValueImmutableCollections;
 
 namespace RealGoodApps.BlazorJavascript.CodeGenerator.Models
 {
@@ -6,7 +6,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator.Models
         string Name,
         ExtractTypeParametersResult ExtractTypeParametersResult,
         TypeInfo ReturnType,
-        ImmutableList<ParameterInfo> Parameters)
+        ValueImmutableList<ParameterInfo> Parameters)
     {
         public string GetNameForCSharp()
         {

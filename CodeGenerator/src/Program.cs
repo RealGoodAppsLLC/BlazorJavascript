@@ -1,6 +1,6 @@
-﻿using System.Collections.Immutable;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using RealGoodApps.BlazorJavascript.CodeGenerator.Models;
+using RealGoodApps.ValueImmutableCollections;
 
 namespace RealGoodApps.BlazorJavascript.CodeGenerator
 {
@@ -70,7 +70,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 parsedInfoList.Add(parsedInfo);
             }
 
-            var merger = new ParsedInfoMerger(parsedInfoList.ToImmutableList());
+            var merger = new ParsedInfoMerger(parsedInfoList.ToValueImmutableList());
             var mergedParseInfo = merger.Merge();
 
             var generator = new CodeGenerator(

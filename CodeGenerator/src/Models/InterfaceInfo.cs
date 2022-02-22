@@ -1,10 +1,10 @@
-using System.Collections.Immutable;
+using RealGoodApps.ValueImmutableCollections;
 
 namespace RealGoodApps.BlazorJavascript.CodeGenerator.Models
 {
     public sealed record InterfaceInfo(
         string Name,
         ExtractTypeParametersResult ExtractTypeParametersResult,
-        ImmutableList<TypeInfo> ExtendsList,
+        ValueImmutableList<TypeInfo> ExtendsList,
         InterfaceBodyInfo Body);
 }

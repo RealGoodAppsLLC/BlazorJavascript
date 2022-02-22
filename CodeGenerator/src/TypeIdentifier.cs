@@ -1,4 +1,4 @@
-using System.Collections.Immutable;
+using RealGoodApps.ValueImmutableCollections;
 
 namespace RealGoodApps.BlazorJavascript.CodeGenerator
 {
@@ -22,10 +22,10 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             return (int)typeIdentifier;
         }
 
-        public static ImmutableList<TypeIdentifier> GetPredefinedTypeIdentifiers()
+        public static ValueImmutableList<TypeIdentifier> GetPredefinedTypeIdentifiers()
         {
             var typeIdentifiers = Enum.GetValues(typeof(TypeIdentifier)).Cast<TypeIdentifier>();
-            return typeIdentifiers.ToImmutableList();
+            return typeIdentifiers.ToValueImmutableList();
         }
     }
 }
