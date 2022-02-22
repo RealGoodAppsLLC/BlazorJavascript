@@ -1,4 +1,3 @@
-using System;
 using Microsoft.JSInterop;
 using RealGoodApps.BlazorJavascript.Interop.BuiltIns;
 using RealGoodApps.BlazorJavascript.Interop.Factories;
@@ -8,34 +7,19 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
 {
     public static class IJSInProcessRuntimeExtensions
     {
-        public static IWindow GetWindow(this IJSInProcessRuntime jsRuntime)
+        public static IWindow? GetWindow(this IJSInProcessRuntime jsRuntime)
         {
             var objectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_getWindow");
-            var jsObject = JSObjectFactory.FromRuntimeObjectReference(jsRuntime, objectReference);
-
-            if (jsObject is not IWindow window)
-            {
-                throw new InvalidCastException("The get window method did not return an IWindow.");
-            }
-
-            return window;
+            return JSObjectFactory.CreateFromRuntimeObjectReference<IWindow>(jsRuntime, objectReference);
         }
 
-        public static IJSObject? GetGlobalObjectByName(
+        public static TJSObject? GetGlobalObjectByName<TJSObject>(
             this IJSInProcessRuntime jsRuntime,
             string identifier)
+            where TJSObject : class, IJSObject
         {
             var objectReference = jsRuntime.Invoke<IJSObjectReference?>("eval", identifier);
-            return JSObjectFactory.FromRuntimeObjectReference(jsRuntime, objectReference);
-        }
-
-        public static TPrototype? GetGlobalObjectByName<TPrototype>(
-            this IJSInProcessRuntime jsRuntime,
-            string identifier)
-            where TPrototype : class, IJSObject
-        {
-            var jsObject = GetGlobalObjectByName(jsRuntime, identifier);
-            return jsObject as TPrototype;
+            return JSObjectFactory.CreateFromRuntimeObjectReference<TJSObject>(jsRuntime, objectReference);
         }
 
         public static JSString? CreateString(
@@ -43,47 +27,25 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
             string? stringValue)
         {
             var stringObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructString", stringValue);
-            var jsObject = JSObjectFactory.FromRuntimeObjectReference(jsRuntime, stringObjectReference);
-            return jsObject as JSString;
+            return JSObjectFactory.CreateFromRuntimeObjectReference<JSString>(jsRuntime, stringObjectReference);
         }
 
         public static JSNumber CreatePositiveInfinity(this IJSInProcessRuntime jsRuntime)
         {
             var infinityObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructPositiveInfinity");
-            var jsObject = JSObjectFactory.FromRuntimeObjectReference(jsRuntime, infinityObjectReference);
-
-            if (jsObject is not JSNumber jsNumber)
-            {
-                throw new InvalidCastException("The positive infinity constructor did not return a JSNumber.");
-            }
-
-            return jsNumber;
+            return JSObjectFactory.CreateFromRuntimeObjectReference<JSNumber>(jsRuntime, infinityObjectReference)!;
         }
 
         public static JSNumber CreateNegativeInfinity(this IJSInProcessRuntime jsRuntime)
         {
             var infinityObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructNegativeInfinity");
-            var jsObject = JSObjectFactory.FromRuntimeObjectReference(jsRuntime, infinityObjectReference);
-
-            if (jsObject is not JSNumber jsNumber)
-            {
-                throw new InvalidCastException("The negative infinity constructor did not return a JSNumber.");
-            }
-
-            return jsNumber;
+            return JSObjectFactory.CreateFromRuntimeObjectReference<JSNumber>(jsRuntime, infinityObjectReference)!;
         }
 
         public static JSNumber CreateNaN(this IJSInProcessRuntime jsRuntime)
         {
-            var infinityObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructNaN");
-            var jsObject = JSObjectFactory.FromRuntimeObjectReference(jsRuntime, infinityObjectReference);
-
-            if (jsObject is not JSNumber jsNumber)
-            {
-                throw new InvalidCastException("The NaN constructor did not return a JSNumber.");
-            }
-
-            return jsNumber;
+            var nanObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructNaN");
+            return JSObjectFactory.CreateFromRuntimeObjectReference<JSNumber>(jsRuntime, nanObjectReference)!;
         }
 
         public static JSNumber CreateNumberFromDouble(
@@ -91,14 +53,7 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
             double value)
         {
             var numberObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructNumberFromDouble", value);
-            var jsObject = JSObjectFactory.FromRuntimeObjectReference(jsRuntime, numberObjectReference);
-
-            if (jsObject is not JSNumber jsNumber)
-            {
-                throw new InvalidCastException("The number from double constructor did not return a JSNumber.");
-            }
-
-            return jsNumber;
+            return JSObjectFactory.CreateFromRuntimeObjectReference<JSNumber>(jsRuntime, numberObjectReference)!;
         }
 
         public static JSNumber CreateNumberFromInt(
@@ -106,14 +61,7 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
             int value)
         {
             var numberObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructNumberFromInt", value);
-            var jsObject = JSObjectFactory.FromRuntimeObjectReference(jsRuntime, numberObjectReference);
-
-            if (jsObject is not JSNumber jsNumber)
-            {
-                throw new InvalidCastException("The number from int constructor did not return a JSNumber.");
-            }
-
-            return jsNumber;
+            return JSObjectFactory.CreateFromRuntimeObjectReference<JSNumber>(jsRuntime, numberObjectReference)!;
         }
 
         public static JSNumber CreateNumberFromFloat(
@@ -121,43 +69,22 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
             float value)
         {
             var numberObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructNumberFromFloat", value);
-            var jsObject = JSObjectFactory.FromRuntimeObjectReference(jsRuntime, numberObjectReference);
-
-            if (jsObject is not JSNumber jsNumber)
-            {
-                throw new InvalidCastException("The number from float constructor did not return a JSNumber.");
-            }
-
-            return jsNumber;
+            return JSObjectFactory.CreateFromRuntimeObjectReference<JSNumber>(jsRuntime, numberObjectReference)!;
         }
 
         public static JSBoolean CreateBoolean(
             this IJSInProcessRuntime jsRuntime,
             bool value)
         {
-            var numberObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructBoolean", value);
-            var jsObject = JSObjectFactory.FromRuntimeObjectReference(jsRuntime, numberObjectReference);
-
-            if (jsObject is not JSBoolean jsBoolean)
-            {
-                throw new InvalidCastException("The boolean constructor did not return a JSBoolean.");
-            }
-
-            return jsBoolean;
+            var booleanObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructBoolean", value);
+            return JSObjectFactory.CreateFromRuntimeObjectReference<JSBoolean>(jsRuntime, booleanObjectReference)!;
         }
 
         public static JSArray CreateArray(
             this IJSInProcessRuntime jsRuntime)
         {
             var arrayObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructArray");
-            var jsObject = JSObjectFactory.FromRuntimeObjectReference(jsRuntime, arrayObjectReference);
-
-            if (jsObject is not JSArray jsArray)
-            {
-                throw new InvalidCastException("The array constructor did not return a JSArray.");
-            }
-
-            return jsArray;
+            return JSObjectFactory.CreateFromRuntimeObjectReference<JSArray>(jsRuntime, arrayObjectReference)!;
         }
     }
 }

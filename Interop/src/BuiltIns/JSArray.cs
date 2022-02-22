@@ -1,10 +1,11 @@
-using System;
 using Microsoft.JSInterop;
+using RealGoodApps.BlazorJavascript.Interop.Attributes;
 using RealGoodApps.BlazorJavascript.Interop.Extensions;
 using RealGoodApps.BlazorJavascript.Interop.Factories;
 
 namespace RealGoodApps.BlazorJavascript.Interop.BuiltIns
 {
+    [JSObjectConstructor(typeof(JSArray))]
     public interface IJSArray : IJSObject
     {
         JSNumber length { get; }
@@ -14,6 +15,7 @@ namespace RealGoodApps.BlazorJavascript.Interop.BuiltIns
         JSNumber PushItem(IJSObject? item);
     }
 
+    [JSObjectConstructor(typeof(JSArray<>))]
     public interface IJSArray<TJSObject> : IJSArray, IJSObject
         where TJSObject : class, IJSObject
     {
@@ -41,12 +43,10 @@ namespace RealGoodApps.BlazorJavascript.Interop.BuiltIns
 
         public IJSObject? GetItemAtIndex(JSNumber index)
         {
-            var itemResultObject = JSArrayHelpers.GetItemAtIndexPlain(
+            return JSArrayHelpers.GetItemAtIndexPlain<IJSObject>(
                 Runtime,
                 ObjectReference,
                 index);
-
-            return itemResultObject;
         }
 
         public JSNumber PushItem(IJSObject? item)
@@ -76,12 +76,10 @@ namespace RealGoodApps.BlazorJavascript.Interop.BuiltIns
 
         IJSObject? IJSArray.GetItemAtIndex(JSNumber index)
         {
-            var itemResultObject = JSArrayHelpers.GetItemAtIndexPlain(
+            return JSArrayHelpers.GetItemAtIndexPlain<IJSObject>(
                 Runtime,
                 ObjectReference,
                 index);
-
-            return itemResultObject;
         }
 
         JSNumber IJSArray.PushItem(IJSObject? item)
@@ -94,22 +92,10 @@ namespace RealGoodApps.BlazorJavascript.Interop.BuiltIns
 
         public TJSObject? GetItemAtIndex(JSNumber index)
         {
-            var itemResultObject = JSArrayHelpers.GetItemAtIndexPlain(
+            return JSArrayHelpers.GetItemAtIndexPlain<TJSObject>(
                 Runtime,
                 ObjectReference,
                 index);
-
-            if (itemResultObject == null)
-            {
-                return null;
-            }
-
-            if (itemResultObject is not TJSObject itemResultAsType)
-            {
-                throw new InvalidCastException("The item at index method did not return the right type.");
-            }
-
-            return itemResultAsType;
         }
 
         public JSNumber PushItem(TJSObject? item)
@@ -123,31 +109,20 @@ namespace RealGoodApps.BlazorJavascript.Interop.BuiltIns
 
     public static class JSArrayHelpers
     {
-        public static IJSObject? GetItemAtIndexPlain(
+        public static TJSObject? GetItemAtIndexPlain<TJSObject>(
             IJSInProcessRuntime jsInProcessRuntime,
             IJSObjectReference objectReference,
             JSNumber index)
+            where TJSObject : class, IJSObject
         {
             var itemResult = jsInProcessRuntime.Invoke<IJSObjectReference?>(
                 "__blazorJavascript_arrayItemAtIndex",
                 objectReference,
                 index.ObjectReference);
 
-            if (itemResult == null)
-            {
-                return null;
-            }
-
-            var itemResultObject = JSObjectFactory.FromRuntimeObjectReference(
+            return JSObjectFactory.CreateFromRuntimeObjectReference<TJSObject>(
                 jsInProcessRuntime,
                 itemResult);
-
-            if (itemResultObject == null)
-            {
-                return null;
-            }
-
-            return itemResultObject;
         }
 
         public static JSNumber PushItemPlain(
@@ -160,33 +135,11 @@ namespace RealGoodApps.BlazorJavascript.Interop.BuiltIns
                 objectReference,
                 item?.ObjectReference);
 
-            if (itemResult == null)
-            {
-                throw new Exception("The array push method did not return a result.");
-            }
-
-            var itemResultAsObject = JSObjectFactory.FromRuntimeObjectReference(
+            return JSObjectFactory.CreateFromRuntimeObjectReference<JSNumber>(
                 jsInProcessRuntime,
-                itemResult);
-
-            if (itemResultAsObject is not JSNumber itemResultAsNumber)
-            {
-                throw new InvalidCastException("The array push method did not return a JSNumber.");
-            }
-
-            return itemResultAsNumber;
+                itemResult)!;
         }
 
-        public static JSNumber GetLengthPlain(IJSObject array)
-        {
-            var lengthProperty = array.GetPropertyOfObject("length");
-
-            if (lengthProperty is not JSNumber lengthPropertyAsNumber)
-            {
-                throw new InvalidCastException("The length property was not a JS number.");
-            }
-
-            return lengthPropertyAsNumber;
-        }
+        public static JSNumber GetLengthPlain(IJSObject array) => array.GetPropertyOfObject<JSNumber>("length")!;
     }
 }

@@ -1,7 +1,9 @@
 using Microsoft.JSInterop;
+using RealGoodApps.BlazorJavascript.Interop.Attributes;
 
 namespace RealGoodApps.BlazorJavascript.Interop.BuiltIns
 {
+    [JSObjectConstructor(typeof(JSObject))]
     public interface IJSObject
     {
         IJSInProcessRuntime Runtime { get; }

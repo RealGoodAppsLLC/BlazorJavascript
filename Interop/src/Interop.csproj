@@ -15,13 +15,8 @@
     </ItemGroup>
 
     <ItemGroup>
-      <None Remove="Javascript\script.js" />
-      <EmbeddedResource Include="Javascript\script.js">
-          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </EmbeddedResource>
-
-        <None Remove="Generated\Javascript\script.js" />
-        <EmbeddedResource Include="Generated\Javascript\script.js">
+        <None Remove="Javascript\script.js" />
+        <EmbeddedResource Include="Javascript\script.js">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </EmbeddedResource>
     </ItemGroup>
