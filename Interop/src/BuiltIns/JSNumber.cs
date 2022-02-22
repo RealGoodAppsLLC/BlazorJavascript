@@ -16,55 +16,25 @@ namespace RealGoodApps.BlazorJavascript.Interop.BuiltIns
         public IJSInProcessRuntime Runtime { get; }
         public IJSObjectReference ObjectReference { get; }
 
-        public bool IsNaN()
-        {
-            return Runtime.Invoke<bool>("__blazorJavascript_isNaN", ObjectReference);
-        }
+        public bool IsNaN() => Runtime.Invoke<bool>("__blazorJavascript_isNaN", ObjectReference);
 
-        public bool IsInfinity()
-        {
-            return Runtime.Invoke<bool>("__blazorJavascript_isInfinity", ObjectReference);
-        }
+        public bool IsInfinity() => Runtime.Invoke<bool>("__blazorJavascript_isInfinity", ObjectReference);
 
-        public bool IsPositiveInfinity()
-        {
-            return Runtime.Invoke<bool>("__blazorJavascript_isPositiveInfinity", ObjectReference);
-        }
+        public bool IsPositiveInfinity() => Runtime.Invoke<bool>("__blazorJavascript_isPositiveInfinity", ObjectReference);
 
-        public bool IsNegativeInfinity()
-        {
-            return Runtime.Invoke<bool>("__blazorJavascript_isNegativeInfinity", ObjectReference);
-        }
+        public bool IsNegativeInfinity() => Runtime.Invoke<bool>("__blazorJavascript_isNegativeInfinity", ObjectReference);
 
-        public bool IsFinite()
-        {
-            return Runtime.Invoke<bool>("__blazorJavascript_isFinite", ObjectReference);
-        }
+        public bool IsFinite() => Runtime.Invoke<bool>("__blazorJavascript_isFinite", ObjectReference);
 
-        public bool IsInteger()
-        {
-            return Runtime.Invoke<bool>("__blazorJavascript_isInteger", ObjectReference);
-        }
+        public bool IsInteger() => Runtime.Invoke<bool>("__blazorJavascript_isInteger", ObjectReference);
 
-        public double ConvertToDotNetDouble()
-        {
-            return this.ConvertToValue<double>();
-        }
+        public double ConvertToDotNetDouble() => this.ConvertToValue<double>();
 
-        public float ConvertToDotNetFloat()
-        {
-            return this.ConvertToValue<float>();
-        }
+        public float ConvertToDotNetFloat() => this.ConvertToValue<float>();
 
-        public int ConvertToDotNetInt()
-        {
-            return this.ConvertToValue<int>();
-        }
+        public int ConvertToDotNetInt() => this.ConvertToValue<int>();
 
-        public long ConvertToDotNetLong()
-        {
-            return this.ConvertToValue<long>();
-        }
+        public long ConvertToDotNetLong() => this.ConvertToValue<long>();
 
         public bool EqualsNumber(JSNumber? other)
         {

@@ -39,7 +39,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator.Models
 
             if (this.Name == "void")
             {
-                return "void";
+                return "IJSObject";
             }
 
             // FIXME: This feel kind of hacky. I think this should be moved higher up.

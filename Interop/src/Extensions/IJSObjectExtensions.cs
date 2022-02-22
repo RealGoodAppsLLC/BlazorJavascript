@@ -6,11 +6,12 @@ using RealGoodApps.BlazorJavascript.Interop.Factories;
 
 namespace RealGoodApps.BlazorJavascript.Interop.Extensions
 {
-    public static partial class IJSObjectExtensions
+    public static class IJSObjectExtensions
     {
-        public static IJSObjectReference? CallConstructorInternal(
-            IJSObject self,
-            params object?[]? args)
+        public static TJSObject CallConstructor<TJSObject>(
+            this IJSObject self,
+            params IJSObject?[]? args)
+            where TJSObject : class, IJSObject
         {
             var allParams = new List<object?>
             {
@@ -20,24 +21,30 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
             if (args != null)
             {
                 allParams.AddRange(args
-                    .Select(arg => arg.ExtractObjectReference())
+                    .Select(arg => arg?.ObjectReference)
                     .ToList());
             }
 
-            return self.Runtime.Invoke<IJSObjectReference?>("__blazorJavascript_constructorFunction", allParams.ToArray());
+            var constructedObjectReference = self.Runtime.Invoke<IJSObjectReference?>("__blazorJavascript_constructorFunction", allParams.ToArray());
+            return JSObjectFactory.CreateFromRuntimeObjectReference<TJSObject>(self.Runtime, constructedObjectReference)!;
         }
 
-        public static IJSObject? GetPropertyOfObject(
+        public static TJSObject UnsafeCastTo<TJSObject>(this IJSObject self)
+            where TJSObject : class, IJSObject
+        {
+            return JSObjectFactory.CreateFromRuntimeObjectReference<TJSObject>(self.Runtime, self.ObjectReference)!;
+        }
+
+        public static TJSObject? GetPropertyOfObject<TJSObject>(
             this IJSObject self,
             string propertyName)
+            where TJSObject : class, IJSObject
         {
-            if (self is JSUndefined)
-            {
-                return self;
-            }
-
-            var returnValue = self.Runtime.Invoke<IJSObjectReference?>("__blazorJavascript_getterFunction", self.ObjectReference, propertyName);
-            return JSObjectFactory.FromRuntimeObjectReference(self.Runtime, returnValue);
+            var returnValue = self.Runtime.Invoke<IJSObjectReference?>(
+                "__blazorJavascript_getterFunction",
+                self.ObjectReference,
+                propertyName);
+            return JSObjectFactory.CreateFromRuntimeObjectReference<TJSObject>(self.Runtime, returnValue);
         }
 
         public static TValue? ConvertToValue<TValue>(
@@ -53,8 +60,9 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
         {
             self.Runtime.InvokeVoid(
                 "__blazorJavascript_setterFunction",
-                self.ObjectReference, propertyName,
-                value.ExtractObjectReference());
+                self.ObjectReference,
+                propertyName,
+                value?.ObjectReference);
         }
     }
 }

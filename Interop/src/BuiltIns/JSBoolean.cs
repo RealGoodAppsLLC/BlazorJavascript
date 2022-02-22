@@ -16,10 +16,7 @@ namespace RealGoodApps.BlazorJavascript.Interop.BuiltIns
         public IJSInProcessRuntime Runtime { get; }
         public IJSObjectReference ObjectReference { get; }
 
-        public bool ConvertToDotNetBool()
-        {
-            return this.ConvertToValue<bool>();
-        }
+        public bool ConvertToDotNetBool() => this.ConvertToValue<bool>();
 
         public bool EqualsBoolean(JSBoolean? other)
         {

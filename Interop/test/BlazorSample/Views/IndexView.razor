@@ -4,7 +4,7 @@
 @using RealGoodApps.BlazorJavascript.Interop.BuiltIns
 @inject IJSRuntime _jsRuntime
 
-<button id="printButton" @onclick="Print" style="color: red">Print</button>
+<button id="printButton" @onclick="Print" class="myClass" style="color: red">Print</button>
 
 @code {
     private void Print()
@@ -16,6 +16,12 @@
 
         var window = jsInProcessRuntime.GetWindow();
         window.console.clear();
+
+        var results = window.document.getElementsByClassName(jsInProcessRuntime.CreateString("myClass"));
+        Console.WriteLine($"Number of elements in collection: {results.length.ConvertToDotNetInt()}");
+
+        var firstElementInCollection = results.item(jsInProcessRuntime.CreateNumberFromInt(0));
+        Console.WriteLine($"Element tag name: {firstElementInCollection.tagName.ConvertToDotNetString()}");
 
         var printButtonElement = window.document.getElementById(jsInProcessRuntime.CreateString("printButton"));
         var computedStyle = window.getComputedStyle(printButtonElement, null);
@@ -29,9 +35,9 @@
         Console.WriteLine($"It is: {now.ConvertToDotNetLong()}");
 
         var body = window.document.body;
-        var appendChildFunction = body.GetPropertyOfObject("appendChild") as JSFunction;
-        var newElement = window.document.createElement(jsInProcessRuntime.CreateString("button"), null) as IHTMLButtonElement;
-        appendChildFunction?.Invoke(body, newElement);
+        var appendChildFunction = body.GetPropertyOfObject<JSFunction>("appendChild");
+        var newElement = window.document.createElement(jsInProcessRuntime.CreateString("button"), null).UnsafeCastTo<IHTMLButtonElement>();
+        appendChildFunction?.InvokeVoid(body, newElement);
         newElement.disabled = jsInProcessRuntime.CreateBoolean(true);
         newElement.innerText = jsInProcessRuntime.CreateString("My Button");
         window.document.title = jsInProcessRuntime.CreateString("Well hello, there!");
@@ -49,7 +55,7 @@
         Console.WriteLine(date.toLocaleString().ConvertToDotNetString());
         Console.WriteLine(date2.toLocaleString().ConvertToDotNetString());
 
-        var anchorElement = window.document.createElement(jsInProcessRuntime.CreateString("a"), null) as IHTMLAnchorElement;
+        var anchorElement = window.document.createElement(jsInProcessRuntime.CreateString("a"), null).UnsafeCastTo<IHTMLAnchorElement>();
         anchorElement.setAttribute(jsInProcessRuntime.CreateString("href"), jsInProcessRuntime.CreateString("https://google.com"));
         var attributes = anchorElement.getAttributeNames();
         var firstAttributeName = attributes.GetItemAtIndex(jsInProcessRuntime.CreateNumberFromInt(0));
@@ -66,7 +72,7 @@
             var pushResult2 = theArray.PushItem(date2);
             Console.WriteLine($"Push result 2: {pushResult2.ConvertToDotNetInt()}");
 
-            var secondItem = theArray.GetItemAtIndex(jsInProcessRuntime.CreateNumberFromInt(1)) as IDate;
+            var secondItem = theArray.GetItemAtIndex(jsInProcessRuntime.CreateNumberFromInt(1)).UnsafeCastTo<IDate>();
             Console.WriteLine(secondItem.toLocaleDateString().ConvertToDotNetString());
         }
 

@@ -3,10 +3,6 @@ if (typeof window['blazorJavascript'] === 'undefined') {
 
     blazorJavascript.interopMarkerSymbol = Symbol();
 
-    blazorJavascript.obtainPrototype = function(o) {
-        console.error("BlazorJavascript initialization error, you may be calling too early!")
-    };
-
     blazorJavascript.checkIsNull = function(val) {
         return val === null;
     };
@@ -95,18 +91,6 @@ if (typeof window['blazorJavascript'] === 'undefined') {
             'reference': result,
             'marker': blazorJavascript.interopMarkerSymbol
         };
-    };
-
-    blazorJavascript.getPrototypeChain = function(o) {
-        const chain = [];
-        let lastPrototype = Object.getPrototypeOf(o);
-
-        while (lastPrototype !== null) {
-            chain.push(lastPrototype);
-            lastPrototype = Object.getPrototypeOf(lastPrototype);
-        }
-
-        return chain;
     };
 
     blazorJavascript.unwrap = function(o) {

@@ -1,14 +1,11 @@
 using RealGoodApps.ValueImmutableCollections;
 using System.Text;
-using Newtonsoft.Json;
 using RealGoodApps.BlazorJavascript.CodeGenerator.Models;
 
 namespace RealGoodApps.BlazorJavascript.CodeGenerator
 {
     public class CodeGenerator
     {
-        private const int MaxGenericParameterCount = 16;
-
         private readonly ParsedInfo _parsedInfo;
         private readonly string _outputDirectory;
 
@@ -33,8 +30,6 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
         public void Generate()
         {
-            var prototypes = new List<(InterfaceInfo InterfaceInfo, GlobalVariableInfo GlobalVariableInfo)>();
-
             foreach (var interfaceInfo in _parsedInfo.Interfaces)
             {
                 var contents = GenerateInterfaceFileContents(
@@ -56,60 +51,19 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
                 File.WriteAllText(interfaceOutputPath, contents);
 
-                GlobalVariableInfo? prototypeGlobalVariable = null;
+                var prototypeContents = GeneratePrototypeFileContents(interfaceInfo, interfaceInfo.Name == GetGlobalThisInterfaceName());
 
-                foreach (var globalVariable in _parsedInfo.GlobalVariables)
+                var prototypeOutputPath = Path.Combine(
+                    _outputDirectory,
+                    "Prototypes",
+                    $"{interfaceInfo.Name}.cs");
+
+                if (File.Exists(prototypeOutputPath))
                 {
-                    if (globalVariable.InlineInterface != null)
-                    {
-                        if (DoesInterfaceBodyHavePrototype(globalVariable.InlineInterface, interfaceInfo))
-                        {
-                            prototypeGlobalVariable = globalVariable;
-                            break;
-                        }
-
-                        continue;
-                    }
-
-                    if (globalVariable.Type != null)
-                    {
-                        var processedFinalTypeInfo = ProcessTypeAliasesAndRewriteNulls(globalVariable.Type);
-
-                        if (!IsFinalTypeTooComplexToRender(processedFinalTypeInfo))
-                        {
-                            var typeInterface = _parsedInfo.Interfaces.FirstOrDefault(i => i.Name == processedFinalTypeInfo.TypeInfo.Single?.Name);
-
-                            if (typeInterface == null)
-                            {
-                                continue;
-                            }
-
-                            if (DoesInterfaceBodyHavePrototype(typeInterface.Body, interfaceInfo))
-                            {
-                                prototypeGlobalVariable = globalVariable;
-                                break;
-                            }
-                        }
-                    }
+                    throw new Exception($"File already exists: {prototypeOutputPath}");
                 }
 
-                if (prototypeGlobalVariable != null)
-                {
-                    var prototypeContents = GeneratePrototypeFileContents(interfaceInfo, interfaceInfo.Name == GetGlobalThisInterfaceName());
-
-                    var prototypeOutputPath = Path.Combine(
-                        _outputDirectory,
-                        "Prototypes",
-                        $"{interfaceInfo.Name}Prototype.cs");
-
-                    if (File.Exists(prototypeOutputPath))
-                    {
-                        throw new Exception($"File already exists: {prototypeOutputPath}");
-                    }
-
-                    prototypes.Add((interfaceInfo, prototypeGlobalVariable));
-                    File.WriteAllText(prototypeOutputPath, prototypeContents);
-                }
+                File.WriteAllText(prototypeOutputPath, prototypeContents);
             }
 
             var globalsDefinedOutside = GetGlobalsDefinedOutsideOfGlobalThisInterface();
@@ -152,109 +106,6 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                     File.WriteAllText(inlineInterfaceOutputPath, inlineInterfaceContents);
                 }
             }
-
-            var javascriptContents = GenerateJavascriptFileContents(prototypes.ToValueImmutableList());
-
-            var javascriptOutputPath = Path.Combine(
-                _outputDirectory,
-                "Javascript",
-                "script.js");
-
-            if (File.Exists(javascriptOutputPath))
-            {
-                throw new Exception($"File already exists: {javascriptOutputPath}");
-            }
-
-            File.WriteAllText(javascriptOutputPath, javascriptContents);
-
-            var objectFactoryContents = GenerateObjectFactoryFileContents(prototypes.ToValueImmutableList());
-
-            var objectFactoryOutputPath = Path.Combine(
-                _outputDirectory,
-                "Factories",
-                "JSObjectFactory.cs");
-
-            if (File.Exists(objectFactoryOutputPath))
-            {
-                throw new Exception($"File already exists: {objectFactoryOutputPath}");
-            }
-
-            File.WriteAllText(objectFactoryOutputPath, objectFactoryContents);
-
-            var jsFunctionContents = GenerateJSFunctionFileContents();
-
-            var jsFunctionOutputPath = Path.Combine(
-                _outputDirectory,
-                "BuiltIns",
-                "JSFunction.cs");
-
-            if (File.Exists(jsFunctionOutputPath))
-            {
-                throw new Exception($"File already exists: {jsFunctionOutputPath}");
-            }
-
-            File.WriteAllText(jsFunctionOutputPath, jsFunctionContents);
-
-            var jsObjectExtensionsContents = GenerateJSObjectExtensionsFileContents();
-
-            var jsObjectExtensionsOutputPath = Path.Combine(
-                _outputDirectory,
-                "Extensions",
-                "IJSObjectExtensions.cs");
-
-            if (File.Exists(jsObjectExtensionsOutputPath))
-            {
-                throw new Exception($"File already exists: {jsObjectExtensionsOutputPath}");
-            }
-
-            File.WriteAllText(jsObjectExtensionsOutputPath, jsObjectExtensionsContents);
-        }
-
-        private static string GenerateJSObjectExtensionsFileContents()
-        {
-            var stringBuilder = new StringBuilder();
-            stringBuilder.AppendLine("/// <auto-generated />");
-            stringBuilder.AppendLine("using Microsoft.JSInterop;");
-            stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.BuiltIns;");
-            stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.Extensions;");
-            stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.Factories;");
-            stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.GlobalVariables;");
-            stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.Prototypes;");
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine("namespace RealGoodApps.BlazorJavascript.Interop.Extensions");
-            stringBuilder.AppendLine("{");
-            stringBuilder.AppendLine(Indent(1) + "public static partial class IJSObjectExtensions");
-            stringBuilder.AppendLine(Indent(1) + "{");
-
-            var isFirst = true;
-
-            for (var typeArgumentCount = 0; typeArgumentCount <= MaxGenericParameterCount; typeArgumentCount++)
-            {
-                if (!isFirst)
-                {
-                    stringBuilder.AppendLine();
-                }
-
-                var typeArgumentsString = GenerateTypeArgumentsForGenericCalls(typeArgumentCount);
-
-                stringBuilder.AppendLine(Indent(2) + $"public static IJSObject CallConstructor{typeArgumentsString}(this IJSObject self, params object[] args)");
-                stringBuilder.Append(GenerateWhereClassesForGenericArguments(typeArgumentCount));
-                stringBuilder.AppendLine(Indent(2) + "{");
-                stringBuilder.AppendLine(Indent(3) + "if (self is JSUndefined)");
-                stringBuilder.AppendLine(Indent(3) + "{");
-                stringBuilder.AppendLine(Indent(4) + "return self;");
-                stringBuilder.AppendLine(Indent(3) + "}");
-                stringBuilder.AppendLine();
-                stringBuilder.AppendLine(Indent(3) + "var result = CallConstructorInternal(self, args);");
-                stringBuilder.AppendLine(Indent(3) + $"return JSObjectFactory.FromRuntimeObjectReference{typeArgumentsString}(self.Runtime, result);");
-                stringBuilder.AppendLine(Indent(2) + "}");
-                isFirst = false;
-            }
-
-            stringBuilder.AppendLine(Indent(1) + "}");
-            stringBuilder.AppendLine("}");
-
-            return stringBuilder.ToString();
         }
 
         private string GenerateInterfaceFileContents(
@@ -269,6 +120,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             var stringBuilder = new StringBuilder();
 
             stringBuilder.AppendLine("/// <auto-generated />");
+            stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.Attributes;");
             stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.BuiltIns;");
             stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.GlobalVariables;");
             stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.Prototypes;");
@@ -276,6 +128,14 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             stringBuilder.AppendLine("namespace RealGoodApps.BlazorJavascript.Interop.Interfaces");
             stringBuilder.AppendLine("{");
 
+            var genericCarrots = string.Empty;
+
+            if (extractTypeParametersResult?.TypeParameters.Any() == true)
+            {
+                genericCarrots = $"<{string.Join(",", extractTypeParametersResult.TypeParameters.Select(_ => string.Empty))}>";
+            }
+
+            stringBuilder.AppendLine($"{Indent(1)}[JSObjectConstructor(typeof({interfaceName}{genericCarrots}))]");
             stringBuilder.Append($"{Indent(1)}public interface I{interfaceName}");
 
             if (extractTypeParametersResult != null)
@@ -386,47 +246,6 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             }
         }
 
-        private string GenerateJSFunctionFileContents()
-        {
-            var stringBuilder = new StringBuilder();
-            stringBuilder.AppendLine("/// <auto-generated />");
-            stringBuilder.AppendLine("using Microsoft.JSInterop;");
-            stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.BuiltIns;");
-            stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.Factories;");
-            stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.GlobalVariables;");
-            stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.Prototypes;");
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine("namespace RealGoodApps.BlazorJavascript.Interop.BuiltIns");
-            stringBuilder.AppendLine("{");
-            stringBuilder.AppendLine(Indent(1) + "public sealed partial class JSFunction");
-            stringBuilder.AppendLine(Indent(1) + "{");
-
-            var isFirst = true;
-
-            for (var typeArgumentCount = 0; typeArgumentCount <= MaxGenericParameterCount; typeArgumentCount++)
-            {
-                if (!isFirst)
-                {
-                    stringBuilder.AppendLine();
-                }
-
-                var typeArgumentsString = GenerateTypeArgumentsForGenericCalls(typeArgumentCount);
-
-                stringBuilder.AppendLine(Indent(2) + $"public IJSObject Invoke{typeArgumentsString}(IJSObject thisObject, params object[] args)");
-                stringBuilder.Append(GenerateWhereClassesForGenericArguments(typeArgumentCount));
-                stringBuilder.AppendLine(Indent(2) + "{");
-                stringBuilder.AppendLine(Indent(3) + "var result = InvokeInternal(thisObject, args);");
-                stringBuilder.AppendLine(Indent(3) + $"return JSObjectFactory.FromRuntimeObjectReference{typeArgumentsString}(Runtime, result);");
-                stringBuilder.AppendLine(Indent(2) + "}");
-                isFirst = false;
-            }
-
-            stringBuilder.AppendLine(Indent(1) + "}");
-            stringBuilder.AppendLine("}");
-
-            return stringBuilder.ToString();
-        }
-
         private void AppendGlobalsToPrototype(StringBuilder stringBuilder)
         {
             var globalsDefinedOutside = GetGlobalsDefinedOutsideOfGlobalThisInterface();
@@ -454,19 +273,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             stringBuilder.AppendLine(Indent(3) + "get");
             stringBuilder.AppendLine(Indent(3) + "{");
 
-            stringBuilder.AppendLine(Indent(4) + $"var propertyObj = this.GetPropertyOfObject(\"{propertyName}\");");
-            stringBuilder.AppendLine(Indent(4) + "if (propertyObj == null)");
-            stringBuilder.AppendLine(Indent(4) + "{");
-            stringBuilder.AppendLine(Indent(5) + "return null;");
-            stringBuilder.AppendLine(Indent(4) + "}");
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine(Indent(4) + $"var propertyAsReturnType = propertyObj as {propertyType};");
-            stringBuilder.AppendLine(Indent(4) + "if (propertyAsReturnType == null)");
-            stringBuilder.AppendLine(Indent(4) + "{");
-            stringBuilder.AppendLine(Indent(5) + "throw new InvalidCastException(\"Something went wrong!\");");
-            stringBuilder.AppendLine(Indent(4) + "}");
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine(Indent(4) + "return propertyAsReturnType;");
+            stringBuilder.AppendLine(Indent(4) + $"return this.GetPropertyOfObject<{propertyType}>(\"{propertyName}\");");
 
             stringBuilder.AppendLine(Indent(3) + "}");
         }
@@ -481,23 +288,6 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
                 stringBuilder.Append(string.Join(", ", extractTypeParametersResult.TypeParameters
                     .Select(typeParameter => typeParameter.Name)));
-
-                stringBuilder.Append('>');
-            }
-
-            return stringBuilder.ToString();
-        }
-
-        private static string ExtractTypeParametersStringForPrototypeConstructorDispatch(InterfaceInfo interfaceInfo)
-        {
-            var stringBuilder = new StringBuilder();
-
-            if (interfaceInfo.ExtractTypeParametersResult.TypeParameters.Any())
-            {
-                stringBuilder.Append('<');
-
-                stringBuilder.Append(string.Join(", ", interfaceInfo.ExtractTypeParametersResult.TypeParameters
-                    .Select(_ => "IJSObject")));
 
                 stringBuilder.Append('>');
             }
@@ -880,10 +670,10 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             stringBuilder.AppendLine();
             stringBuilder.AppendLine("namespace RealGoodApps.BlazorJavascript.Interop.Prototypes");
             stringBuilder.AppendLine("{");
-            stringBuilder.AppendLine($"{Indent(1)}public class {interfaceInfo.Name}Prototype{typeParametersString} : I{interfaceInfo.Name}{typeParametersString}, IJSObject");
+            stringBuilder.AppendLine($"{Indent(1)}public class {interfaceInfo.Name}{typeParametersString} : I{interfaceInfo.Name}{typeParametersString}, IJSObject");
             stringBuilder.AppendLine(Indent(1) + "{");
 
-            stringBuilder.Append(GenerateJSObjectSubtypeBoilerPlate($"{interfaceInfo.Name}Prototype"));
+            stringBuilder.Append(GenerateJSObjectSubtypeBoilerPlate($"{interfaceInfo.Name}"));
 
             stringBuilder.Append(GenerateInterfaceImplementations(
                 GetPrefixTypeNameForInterfaceSymbolImplementations(interfaceInfo),
@@ -937,18 +727,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 var processedReturnType = ProcessTypeAliasesAndRewriteNulls(constructorInfo.ReturnType);
                 var returnRenderedTypeName = GetRenderedTypeName(processedReturnType);
 
-                var invokeGenericArguments = GenerateInvokeGenericArguments(processedReturnType);
-
-                stringBuilder.AppendLine(Indent(3) + $"var resultObj = this.CallConstructor{invokeGenericArguments}({parametersString});");
-
-                stringBuilder.AppendLine(Indent(3) + $"var resultAsType = resultObj as {returnRenderedTypeName};");
-                stringBuilder.AppendLine();
-                stringBuilder.AppendLine(Indent(3) + "if (resultAsType == null)");
-                stringBuilder.AppendLine(Indent(3) + "{");
-                stringBuilder.AppendLine(Indent(4) + "throw new InvalidCastException(\"Return value is no good.\");");
-                stringBuilder.AppendLine(Indent(3) + "}");
-                stringBuilder.AppendLine();
-                stringBuilder.AppendLine(Indent(3) + "return resultAsType;");
+                stringBuilder.AppendLine(Indent(3) + $"return this.CallConstructor<{returnRenderedTypeName}>({parametersString});");
 
                 stringBuilder.Append(Indent(2) + "}");
                 stringBuilder.Append(Environment.NewLine);
@@ -982,28 +761,15 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 var processedReturnType = ProcessTypeAliasesAndRewriteNulls(methodInfo.ReturnType);
                 var returnRenderedTypeName = GetRenderedTypeName(processedReturnType);
 
-                var invokeGenericArguments = GenerateInvokeGenericArguments(processedReturnType);
+                stringBuilder.AppendLine(Indent(3) + $"var functionObj = this.GetPropertyOfObject<JSFunction>(\"{methodInfo.Name}\");");
 
-                stringBuilder.AppendLine(Indent(3) + $"var propertyObj = this.GetPropertyOfObject(\"{methodInfo.Name}\");");
-                stringBuilder.AppendLine(Indent(3) + "var propertyAsFunction = propertyObj as JSFunction;");
-                stringBuilder.AppendLine();
-                stringBuilder.AppendLine(Indent(3) + "if (propertyAsFunction == null)");
-                stringBuilder.AppendLine(Indent(3) + "{");
-                stringBuilder.AppendLine(Indent(4) + "throw new InvalidCastException(\"Something went wrong!\");");
-                stringBuilder.AppendLine(Indent(3) + "}");
-                stringBuilder.AppendLine();
-                stringBuilder.AppendLine(Indent(3) + $"var resultObj = propertyAsFunction.Invoke{invokeGenericArguments}(this{parametersPrefix}{parametersString});");
-
-                if (returnRenderedTypeName != "void")
+                if (returnRenderedTypeName == "void")
                 {
-                    stringBuilder.AppendLine(Indent(3) + $"var resultAsType = resultObj as {returnRenderedTypeName};");
-                    stringBuilder.AppendLine();
-                    stringBuilder.AppendLine(Indent(3) + "if (resultAsType == null)");
-                    stringBuilder.AppendLine(Indent(3) + "{");
-                    stringBuilder.AppendLine(Indent(4) + "throw new InvalidCastException(\"Return value is no good.\");");
-                    stringBuilder.AppendLine(Indent(3) + "}");
-                    stringBuilder.AppendLine();
-                    stringBuilder.AppendLine(Indent(3) + "return resultAsType;");
+                    stringBuilder.AppendLine(Indent(3) + $"functionObj.InvokeVoid(this{parametersPrefix}{parametersString});");
+                }
+                else
+                {
+                    stringBuilder.AppendLine(Indent(3) + $"return functionObj.Invoke<{returnRenderedTypeName}>(this{parametersPrefix}{parametersString});");
                 }
 
                 stringBuilder.Append(Indent(2) + "}");
@@ -1054,22 +820,6 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             return stringBuilder.ToString();
         }
 
-        private string GenerateInvokeGenericArguments(ProcessedTypeInfo processedReturnType)
-        {
-            var invokeGenericArgumentsStringBuilder = new StringBuilder();
-
-            if (processedReturnType.TypeInfo.Array != null)
-            {
-                invokeGenericArgumentsStringBuilder.Append('<');
-                invokeGenericArgumentsStringBuilder.Append(
-                    GetRenderedTypeName(new ProcessedTypeInfo(processedReturnType.TypeInfo.Array)));
-                invokeGenericArgumentsStringBuilder.Append('>');
-            }
-
-            var invokeGenericArguments = invokeGenericArgumentsStringBuilder.ToString();
-            return invokeGenericArguments;
-        }
-
         private static string GenerateJSObjectSubtypeBoilerPlate(string className)
         {
             var stringBuilder = new StringBuilder();
@@ -1097,7 +847,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
             return parameterInfoType.TypeInfo.Single == null
                    || parameterInfoType.TypeInfo.Single.IsUnhandled
-                   || parameterInfoType.TypeInfo.Single.TypeArguments.Any()
+                   || parameterInfoType.TypeInfo.Single.TypeArguments.Any(typeArgument => IsFinalTypeTooComplexToRender(new ProcessedTypeInfo(typeArgument)))
                    || string.IsNullOrWhiteSpace(parameterInfoType.TypeInfo.Single.Name);
         }
 
@@ -1127,14 +877,13 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
             var typeArguments = singleTypeInfo
                 .TypeArguments
-                .Select(typeArgument => typeArgument.Single)
                 .WhereNotNull()
                 .ToValueImmutableList();
 
             if (typeArguments.Any())
             {
                 fullName.Append('<');
-                fullName.Append(string.Join(",", typeArguments.Select(typeArgument => typeArgument.GetNameForCSharp(_parsedInfo.Interfaces))));
+                fullName.Append(string.Join(",", typeArguments.Select(typeArgument => GetRenderedTypeName(new ProcessedTypeInfo(typeArgument)))));
                 fullName.Append('>');
             }
             else
@@ -1193,6 +942,19 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 return new ProcessedTypeInfo(typeInfo);
             }
 
+            var processedTypeArguments = typeInfo.Single.TypeArguments
+                .Select(ProcessTypeAliasesAndRewriteNulls)
+                .Select(processedTypeArgument => processedTypeArgument.TypeInfo)
+                .ToValueImmutableList();
+
+            typeInfo = typeInfo with
+            {
+                Single = typeInfo.Single with
+                {
+                    TypeArguments = processedTypeArguments,
+                },
+            };
+
             var anyTypeAliases = false;
             while (true)
             {
@@ -1244,262 +1006,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 null);
         }
 
-        private static bool DoesInterfaceBodyHavePrototype(
-            InterfaceBodyInfo interfaceBody,
-            InterfaceInfo interfaceInfo)
-        {
-            foreach (var property in interfaceBody.Properties)
-            {
-                if (property.Name != "prototype"
-                    || property.Type.Single == null
-                    || property.Type.Single.Name != interfaceInfo.Name)
-                {
-                    continue;
-                }
-
-                return true;
-            }
-
-            return false;
-        }
-
-        private string GenerateJavascriptFileContents(ValueImmutableList<(InterfaceInfo InterfaceInfo, GlobalVariableInfo GlobalVariableInfo)> prototypes)
-        {
-            var stringBuilder = new StringBuilder();
-
-            var predefinedTypeIdentifiers = TypeIdentifiers.GetPredefinedTypeIdentifiers();
-
-            foreach (var predefinedTypeIdentifier in predefinedTypeIdentifiers)
-            {
-                stringBuilder.AppendLine($"window.BlazorJavascript.typeBuiltIn{predefinedTypeIdentifier.ToString()} = {JsonConvert.SerializeObject(predefinedTypeIdentifier.ToInteger())};");
-            }
-
-            var prototypeTypeIdentifier = predefinedTypeIdentifiers.Last().ToInteger() + 1;
-
-            foreach (var prototypeInfo in prototypes)
-            {
-                stringBuilder.AppendLine($"window.BlazorJavascript.typePrototype{prototypeInfo.InterfaceInfo.Name} = {JsonConvert.SerializeObject(prototypeTypeIdentifier)};");
-                prototypeTypeIdentifier++;
-            }
-
-            var globalsDefinedOutside = GetGlobalsDefinedOutsideOfGlobalThisInterface();
-
-            foreach (var globalDefinedOutside in globalsDefinedOutside)
-            {
-                stringBuilder.AppendLine($"window.BlazorJavascript.typeGlobal{globalDefinedOutside.GlobalVariableInfo.Name} = {JsonConvert.SerializeObject(prototypeTypeIdentifier)};");
-                prototypeTypeIdentifier++;
-            }
-
-            stringBuilder.AppendLine();
-
-            stringBuilder.AppendLine("window.BlazorJavascript.obtainPrototype = function(o) {");
-            stringBuilder.AppendLine(Indent(1) + "let p = window.BlazorJavascript.unwrap(o);");
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine(Indent(1) + "if (p === null) {");
-            stringBuilder.AppendLine(Indent(2) + "return window.BlazorJavascript.typeBuiltInNull;");
-            stringBuilder.AppendLine(Indent(1) + "}");
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine(Indent(1) + "if (p === undefined) {");
-            stringBuilder.AppendLine(Indent(2) + "return window.BlazorJavascript.typeBuiltInUndefined;");
-            stringBuilder.AppendLine(Indent(1) + "}");
-            stringBuilder.AppendLine();
-
-            foreach (var globalDefinedOutside in globalsDefinedOutside)
-            {
-                stringBuilder.AppendLine(Indent(1) + $"if (typeof {globalDefinedOutside.GlobalVariableInfo.Name} !== 'undefined' && p === {globalDefinedOutside.GlobalVariableInfo.Name}) {{");
-                stringBuilder.AppendLine(Indent(2) + $"return window.BlazorJavascript.typeGlobal{globalDefinedOutside.GlobalVariableInfo.Name};");
-                stringBuilder.AppendLine(Indent(1) + "}");
-                stringBuilder.AppendLine();
-            }
-
-            stringBuilder.AppendLine(Indent(1) + "const chain = window.BlazorJavascript.getPrototypeChain(p);");
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine(Indent(1) + "for (let prototypeIndex = 0; prototypeIndex < chain.length; prototypeIndex++) {");
-            stringBuilder.AppendLine(Indent(2) + "let chainPrototype = chain[prototypeIndex];");
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine(Indent(2) + "if (chainPrototype === Boolean.prototype) {");
-            stringBuilder.AppendLine(Indent(3) + "return window.BlazorJavascript.typeBuiltInBoolean;");
-            stringBuilder.AppendLine(Indent(2) + "}");
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine(Indent(2) + "if (chainPrototype === Function.prototype) {");
-            stringBuilder.AppendLine(Indent(3) + "return window.BlazorJavascript.typeBuiltInFunction;");
-            stringBuilder.AppendLine(Indent(2) + "}");
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine(Indent(2) + "if (chainPrototype === Number.prototype) {");
-            stringBuilder.AppendLine(Indent(3) + "return window.BlazorJavascript.typeBuiltInNumber;");
-            stringBuilder.AppendLine(Indent(2) + "}");
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine(Indent(2) + "if (chainPrototype === String.prototype) {");
-            stringBuilder.AppendLine(Indent(3) + "return window.BlazorJavascript.typeBuiltInString;");
-            stringBuilder.AppendLine(Indent(2) + "}");
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine(Indent(2) + "if (chainPrototype === Array.prototype) {");
-            stringBuilder.AppendLine(Indent(3) + "return window.BlazorJavascript.typeBuiltInArray;");
-            stringBuilder.AppendLine(Indent(2) + "}");
-
-            foreach (var prototypeInfo in prototypes)
-            {
-                stringBuilder.AppendLine();
-                stringBuilder.AppendLine(Indent(2) + $"if (typeof {prototypeInfo.GlobalVariableInfo.Name} !== 'undefined' && chainPrototype === {prototypeInfo.GlobalVariableInfo.Name}.prototype) {{");
-                stringBuilder.AppendLine(Indent(3) + $"return window.BlazorJavascript.typePrototype{prototypeInfo.InterfaceInfo.Name};");
-                stringBuilder.AppendLine(Indent(2) + "}");
-            }
-
-            stringBuilder.AppendLine(Indent(1) + "}");
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine(Indent(1) + "return window.BlazorJavascript.typeBuiltInObject;"); ;
-
-            stringBuilder.AppendLine("};");
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine("window['__blazorJavascript_obtainPrototype'] = window.BlazorJavascript.obtainPrototype;");
-
-            return stringBuilder.ToString();
-        }
-
-        public string GenerateObjectFactoryFileContents(ValueImmutableList<(InterfaceInfo InterfaceInfo, GlobalVariableInfo GlobalVariableInfo)> prototypes)
-        {
-            var stringBuilder = new StringBuilder();
-            stringBuilder.AppendLine("/// <auto-generated />");
-            stringBuilder.AppendLine("using Microsoft.JSInterop;");
-            stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.BuiltIns;");
-            stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.GlobalVariables;");
-            stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.Prototypes;");
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine("namespace RealGoodApps.BlazorJavascript.Interop.Factories");
-            stringBuilder.AppendLine("{");
-            stringBuilder.AppendLine(Indent(1) + "public static class JSObjectFactory");
-            stringBuilder.AppendLine(Indent(1) + "{");
-
-            for (var argCount = 0; argCount <= MaxGenericParameterCount; argCount++)
-            {
-                stringBuilder.Append(GenerateObjectFactoryOverload(prototypes, argCount));
-            }
-
-            stringBuilder.AppendLine(Indent(1) + "}");
-            stringBuilder.AppendLine("}");
-
-            return stringBuilder.ToString();
-        }
-
-        private string GenerateObjectFactoryOverload(
-            ValueImmutableList<(InterfaceInfo InterfaceInfo, GlobalVariableInfo GlobalVariableInfo)> prototypes,
-            int genericArgumentCount)
-        {
-            var stringBuilder = new StringBuilder();
-
-            var genericString = GenerateTypeArgumentsForGenericCalls(genericArgumentCount);
-
-            stringBuilder.AppendLine(Indent(2) + $"public static IJSObject FromRuntimeObjectReference{genericString}(IJSInProcessRuntime jsInProcessRuntime, IJSObjectReference objectReference)");
-
-            stringBuilder.Append(GenerateWhereClassesForGenericArguments(genericArgumentCount));
-
-            stringBuilder.AppendLine(Indent(2) + "{");
-            stringBuilder.AppendLine(Indent(3) + "var prototype = jsInProcessRuntime.Invoke<int>(\"__blazorJavascript_obtainPrototype\", objectReference);");
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine(Indent(3) + "switch (prototype)");
-            stringBuilder.AppendLine(Indent(3) + "{");
-            stringBuilder.AppendLine(Indent(4) + "case 0:");
-            stringBuilder.AppendLine(Indent(5) + "return null;");
-            stringBuilder.AppendLine(Indent(4) + "case 1:");
-            stringBuilder.AppendLine(Indent(5) + "return new JSUndefined(jsInProcessRuntime);");
-            stringBuilder.AppendLine(Indent(3) + "}");
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine(Indent(3) + "var objectReferenceNotNull = objectReference!;");
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine(Indent(3) + "return prototype switch");
-            stringBuilder.AppendLine(Indent(3) + "{");
-            stringBuilder.AppendLine(Indent(4) + $"{TypeIdentifiers.TypeIdentifier.Number.ToInteger()} => new JSNumber(jsInProcessRuntime, objectReferenceNotNull),");
-            stringBuilder.AppendLine(Indent(4) + $"{TypeIdentifiers.TypeIdentifier.String.ToInteger()} => new JSString(jsInProcessRuntime, objectReferenceNotNull),");
-            stringBuilder.AppendLine(Indent(4) + $"{TypeIdentifiers.TypeIdentifier.Function.ToInteger()} => new JSFunction(jsInProcessRuntime, objectReferenceNotNull),");
-            stringBuilder.AppendLine(Indent(4) + $"{TypeIdentifiers.TypeIdentifier.Boolean.ToInteger()} => new JSBoolean(jsInProcessRuntime, objectReferenceNotNull),");
-
-            if (genericArgumentCount == 0)
-            {
-                stringBuilder.AppendLine(Indent(4) + $"{TypeIdentifiers.TypeIdentifier.Array.ToInteger()} => new JSArray(jsInProcessRuntime, objectReferenceNotNull),");
-            }
-            else if (genericArgumentCount == 1)
-            {
-                stringBuilder.AppendLine(Indent(4) + $"{TypeIdentifiers.TypeIdentifier.Array.ToInteger()} => new JSArray{genericString}(jsInProcessRuntime, objectReferenceNotNull),");
-            }
-
-            var prototypeTypeIdentifier = TypeIdentifiers.GetPredefinedTypeIdentifiers().Last().ToInteger() + 1;
-
-            foreach (var prototypeInfo in prototypes)
-            {
-                var typeParametersString = genericArgumentCount == 0
-                    ? ExtractTypeParametersStringForPrototypeConstructorDispatch(prototypeInfo.InterfaceInfo)
-                    : genericString;
-
-                // FIXME: We are cheating here because `ExtractTypeParametersStringForPrototypeConstructorDispatch` is too tightly coupled.
-                //        Ideally, we would actually inline that logic and only run it if there was 0 generic arguments.
-                if (genericArgumentCount < 1
-                    || (prototypeInfo.InterfaceInfo.ExtractTypeParametersResult.TypeParameters.Count == genericArgumentCount))
-                {
-                    stringBuilder.AppendLine(Indent(4) + $"{prototypeTypeIdentifier} => new {prototypeInfo.InterfaceInfo.Name}Prototype{typeParametersString}(jsInProcessRuntime, objectReferenceNotNull),");
-                }
-
-                prototypeTypeIdentifier++;
-            }
-
-            var globalsDefinedOutside = GetGlobalsDefinedOutsideOfGlobalThisInterface();
-
-            foreach (var globalDefinedOutside in globalsDefinedOutside)
-            {
-                stringBuilder.AppendLine(Indent(4) + $"{prototypeTypeIdentifier} => new {globalDefinedOutside.GlobalVariableInfo.Name}Global(jsInProcessRuntime, objectReferenceNotNull),");
-                prototypeTypeIdentifier++;
-            }
-
-            stringBuilder.AppendLine(Indent(4) + "_ => new JSObject(jsInProcessRuntime, objectReferenceNotNull),");
-            stringBuilder.AppendLine(Indent(3) + "};");
-            stringBuilder.AppendLine(Indent(2) + "}");
-
-            return stringBuilder.ToString();
-        }
-
-        private static string GenerateWhereClassesForGenericArguments(int genericArgumentCount)
-        {
-            if (genericArgumentCount < 1)
-            {
-                return string.Empty;
-            }
-
-            var stringBuilder = new StringBuilder();
-
-            for (var genericArgumentIndex = 0; genericArgumentIndex < genericArgumentCount; genericArgumentIndex++)
-            {
-                stringBuilder.AppendLine(Indent(3) + $"where TJSObject{genericArgumentIndex} : class, IJSObject");
-            }
-
-            return stringBuilder.ToString();
-        }
-
-        private static string GenerateTypeArgumentsForGenericCalls(int genericArgumentCount)
-        {
-            var genericStringBuilder = new StringBuilder();
-
-            if (genericArgumentCount > 0)
-            {
-                genericStringBuilder.Append('<');
-                var isFirst = true;
-
-                for (var genericArgumentIndex = 0; genericArgumentIndex < genericArgumentCount; genericArgumentIndex++)
-                {
-                    if (!isFirst)
-                    {
-                        genericStringBuilder.Append(',');
-                    }
-
-                    genericStringBuilder.Append($"TJSObject{genericArgumentIndex}");
-                    isFirst = false;
-                }
-
-                genericStringBuilder.Append('>');
-            }
-
-            return genericStringBuilder.ToString();
-        }
-
-        public sealed record GlobalDefinedOutsideOfGlobalThisInterface(
+        private sealed record GlobalDefinedOutsideOfGlobalThisInterface(
             GlobalVariableInfo GlobalVariableInfo,
             string InterfaceTypeName,
             InterfaceBodyInfo InterfaceBodyInfo,

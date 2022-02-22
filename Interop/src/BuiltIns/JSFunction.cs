@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.JSInterop;
-using RealGoodApps.BlazorJavascript.Interop.Extensions;
+using RealGoodApps.BlazorJavascript.Interop.Factories;
 
 namespace RealGoodApps.BlazorJavascript.Interop.BuiltIns
 {
-    public sealed partial class JSFunction : IJSObject
+    public sealed class JSFunction : IJSObject
     {
         public JSFunction(
             IJSInProcessRuntime jsInProcessRuntime,
@@ -18,9 +18,10 @@ namespace RealGoodApps.BlazorJavascript.Interop.BuiltIns
         public IJSInProcessRuntime Runtime { get; }
         public IJSObjectReference ObjectReference { get; }
 
-        private IJSObjectReference? InvokeInternal(
+        public TJSObject? Invoke<TJSObject>(
             IJSObject? thisObject,
-            params object?[]? args)
+            params IJSObject?[]? args)
+            where TJSObject : class, IJSObject
         {
             var allParams = new List<object?>
             {
@@ -31,11 +32,37 @@ namespace RealGoodApps.BlazorJavascript.Interop.BuiltIns
             if (args != null)
             {
                 allParams.AddRange(args
-                    .Select(arg => arg.ExtractObjectReference())
+                    .Select(arg => arg?.ObjectReference)
                     .ToList());
             }
 
-            return Runtime.Invoke<IJSObjectReference?>("__blazorJavascript_invokeFunction", allParams.ToArray());
+            var returnValueObjectReference = Runtime.Invoke<IJSObjectReference?>(
+                "__blazorJavascript_invokeFunction",
+                allParams.ToArray());
+
+            return JSObjectFactory.CreateFromRuntimeObjectReference<TJSObject>(Runtime, returnValueObjectReference);
+        }
+
+        public void InvokeVoid(
+            IJSObject? thisObject,
+            params IJSObject?[]? args)
+        {
+            var allParams = new List<object?>
+            {
+                ObjectReference,
+                thisObject?.ObjectReference,
+            };
+
+            if (args != null)
+            {
+                allParams.AddRange(args
+                    .Select(arg => arg?.ObjectReference)
+                    .ToList());
+            }
+
+            Runtime.InvokeVoid(
+                "__blazorJavascript_invokeFunction",
+                allParams.ToArray());
         }
     }
 }
