@@ -270,12 +270,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             string propertyName,
             string propertyType)
         {
-            stringBuilder.AppendLine(Indent(3) + "get");
-            stringBuilder.AppendLine(Indent(3) + "{");
-
-            stringBuilder.AppendLine(Indent(4) + $"return this.GetPropertyOfObject<{propertyType}>(\"{propertyName}\");");
-
-            stringBuilder.AppendLine(Indent(3) + "}");
+            stringBuilder.AppendLine(Indent(3) + $"get => this.GetPropertyOfObject<{propertyType}>(\"{propertyName}\");");
         }
 
         private static string ExtractTypeParametersString(ExtractTypeParametersResult extractTypeParametersResult)
@@ -807,11 +802,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
                 if (!propertyInfo.IsReadonly)
                 {
-                    stringBuilder.AppendLine();
-                    stringBuilder.AppendLine(Indent(3) + "set");
-                    stringBuilder.AppendLine(Indent(3) + "{");
-                    stringBuilder.AppendLine(Indent(4) + $"this.SetPropertyOfObject(\"{propertyInfo.Name}\", value);");
-                    stringBuilder.AppendLine(Indent(3) + "}");
+                    stringBuilder.AppendLine(Indent(3) + $"set => this.SetPropertyOfObject(\"{propertyInfo.Name}\", value);");
                 }
 
                 stringBuilder.AppendLine(Indent(2) + "}");
