@@ -391,6 +391,40 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             stringBuilder.Append(propertyInfo.GetNameForCSharp());
         }
 
+        public enum CollisionType
+        {
+            None,
+            SameParameters,
+            Equal,
+        }
+
+        private CollisionType GetCollisionType(
+            MethodInfo subject,
+            MethodInfo other)
+        {
+            var subjectParametersProcessed = subject.Parameters
+                .Select(p => ProcessTypeInformation(p.Type))
+                .ToValueImmutableList();
+
+            var otherParametersProcessed = other.Parameters
+                .Select(p => ProcessTypeInformation(p.Type))
+                .ToValueImmutableList();
+
+            if (subject.Name != other.Name
+                || !subjectParametersProcessed.Equals(otherParametersProcessed)
+                || subject.ExtractTypeParametersResult.TypeParameters.Count != other.ExtractTypeParametersResult.TypeParameters.Count)
+            {
+                return CollisionType.None;
+            }
+
+            var subjectReturnTypeProcessed = ProcessTypeInformation(subject.ReturnType);
+            var otherReturnTypeProcessed = ProcessTypeInformation(other.ReturnType);
+
+            return subjectReturnTypeProcessed == otherReturnTypeProcessed
+                ? CollisionType.Equal
+                : CollisionType.SameParameters;
+        }
+
         private ValueImmutableList<(InterfaceInfo? OwnerInterface, MethodInfo MethodInfo)> GetMethodsFromInterfaceBody(
             InterfaceBodyInfo interfaceBodyInfo,
             ExtractTypeParametersResult? extractTypeParametersResult,
@@ -453,7 +487,42 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                     continue;
                 }
 
-                methods.Add((ownerInterface, methodInfo));
+                var collisionType = CollisionType.None;
+                int collisionCount = 0;
+
+                foreach (var (existingInterface, existingMethod) in methods)
+                {
+                    if (existingInterface != ownerInterface)
+                    {
+                        continue;
+                    }
+
+                    var existingCollisionType = GetCollisionType(methodInfo, existingMethod);
+
+                    if (existingCollisionType != CollisionType.None)
+                    {
+                        collisionType = existingCollisionType;
+                        collisionCount++;
+                    }
+                }
+
+                if (collisionType == CollisionType.None)
+                {
+                    methods.Add((ownerInterface, methodInfo));
+                }
+                else if (collisionType == CollisionType.SameParameters)
+                {
+                    var collisionString = new StringBuilder();
+                    for (var c = 0; c < collisionCount; c++)
+                    {
+                        collisionString.Append('_');
+                    }
+
+                    methods.Add((ownerInterface, methodInfo with
+                    {
+                        Name = methodInfo.Name + collisionString,
+                    }));
+                }
             }
 
             return methods.ToValueImmutableList();
@@ -845,6 +914,11 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 return IsFinalTypeTooComplexToRender(new ProcessedTypeInfo(parameterInfoType.TypeInfo.Array));
             }
 
+            if (parameterInfoType.TypeInfo.Union != null)
+            {
+                return false;
+            }
+
             return parameterInfoType.TypeInfo.Single == null
                    || parameterInfoType.TypeInfo.Single.IsUnhandled
                    || parameterInfoType.TypeInfo.Single.TypeArguments.Any(typeArgument => IsFinalTypeTooComplexToRender(new ProcessedTypeInfo(typeArgument)))
@@ -863,6 +937,11 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 fullArrayName.Append('>');
 
                 return fullArrayName.ToString();
+            }
+
+            if (processedTypeInfo.TypeInfo.Union != null)
+            {
+                return "IJSObject";
             }
 
             var singleTypeInfo = processedTypeInfo.TypeInfo.Single;
@@ -997,13 +1076,28 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 return finalTypeList.First();
             }
 
+            // HACK: Replace unions with any (which will essentially equate to IJSObject).
             return new TypeInfo(
-                new UnionTypeInfo(finalTypeList.ToValueImmutableList()),
                 null,
                 null,
                 null,
+                new SingleTypeInfo(
+                    "any",
+                    null,
+                    null,
+                    null,
+                    ValueImmutableList.Create<TypeInfo>(),
+                    false),
                 null,
                 null);
+
+            // return new TypeInfo(
+            //     new UnionTypeInfo(finalTypeList.ToValueImmutableList()),
+            //     null,
+            //     null,
+            //     null,
+            //     null,
+            //     null);
         }
 
         private sealed record GlobalDefinedOutsideOfGlobalThisInterface(

@@ -5,6 +5,7 @@
 @inject IJSRuntime _jsRuntime
 
 <button id="printButton" @onclick="Print" class="myClass" style="color: red">Print</button>
+<canvas id="canvas" style="width: 200px;height: 200px"></canvas>
 
 @code {
     private void Print()
@@ -16,6 +17,14 @@
 
         var window = jsInProcessRuntime.GetWindow();
         window.console.clear();
+
+        var canvasElement = window.document.getElementById(jsInProcessRuntime.CreateString("canvas")).UnsafeCastTo<IHTMLCanvasElement>();
+        var canvasContext = canvasElement.getContext(jsInProcessRuntime.CreateString("2d"), null).UnsafeCastTo<ICanvasRenderingContext2D>();
+        canvasContext.fillRect(
+            jsInProcessRuntime.CreateNumberFromInt(0),
+            jsInProcessRuntime.CreateNumberFromInt(0),
+            jsInProcessRuntime.CreateNumberFromInt(50),
+            jsInProcessRuntime.CreateNumberFromInt(50));
 
         var results = window.document.getElementsByClassName(jsInProcessRuntime.CreateString("myClass"));
         Console.WriteLine($"Number of elements in collection: {results.length.ConvertToDotNetInt()}");
