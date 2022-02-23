@@ -24,6 +24,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 "params" => "@params",
                 "this" => "@this",
                 "event" => "@event",
+                "base" => "@base",
                 "continue" => "@continue",
                 "lock" => "@lock",
                 "ref" => "@ref",

@@ -146,7 +146,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             var extendsList = interfaceExtendsList
                 .Select(extendTypeInfo => extendTypeInfo)
                 .Where(extendTypeInfo => extendTypeInfo.Single != null)
-                .Select(extendedTypeInfo => GetRenderedTypeName(ProcessTypeAliasesAndRewriteNulls(extendedTypeInfo)))
+                .Select(extendedTypeInfo => GetRenderedTypeName(ProcessTypeInformation(extendedTypeInfo)))
                 .Append("IJSObject")
                 .ToValueImmutableList();
             stringBuilder.Append($" : {string.Join(", ", extendsList)}");
@@ -310,7 +310,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             ConstructorInfo constructorInfo,
             string prefixTypeName)
         {
-            stringBuilder.Append(GetRenderedTypeName(ProcessTypeAliasesAndRewriteNulls(constructorInfo.ReturnType)));
+            stringBuilder.Append(GetRenderedTypeName(ProcessTypeInformation(constructorInfo.ReturnType)));
             stringBuilder.Append(' ');
 
             if (!string.IsNullOrWhiteSpace(prefixTypeName))
@@ -331,7 +331,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                     stringBuilder.Append(", ");
                 }
 
-                stringBuilder.Append(GetRenderedTypeName(ProcessTypeAliasesAndRewriteNulls(parameterInfo.Type)));
+                stringBuilder.Append(GetRenderedTypeName(ProcessTypeInformation(parameterInfo.Type)));
                 stringBuilder.Append(' ');
                 stringBuilder.Append(parameterInfo.GetNameForCSharp());
                 isFirst = false;
@@ -345,7 +345,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             MethodInfo methodInfo,
             string prefixTypeName)
         {
-            stringBuilder.Append(GetRenderedTypeName(ProcessTypeAliasesAndRewriteNulls(methodInfo.ReturnType)));
+            stringBuilder.Append(GetRenderedTypeName(ProcessTypeInformation(methodInfo.ReturnType)));
             stringBuilder.Append(' ');
 
             if (!string.IsNullOrWhiteSpace(prefixTypeName))
@@ -366,7 +366,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                     stringBuilder.Append(", ");
                 }
 
-                stringBuilder.Append(GetRenderedTypeName(ProcessTypeAliasesAndRewriteNulls(parameterInfo.Type)));
+                stringBuilder.Append(GetRenderedTypeName(ProcessTypeInformation(parameterInfo.Type)));
                 stringBuilder.Append(' ');
                 stringBuilder.Append(parameterInfo.GetNameForCSharp());
                 isFirst = false;
@@ -380,7 +380,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             PropertyInfo propertyInfo,
             string prefixTypeName)
         {
-            stringBuilder.Append(GetRenderedTypeName(ProcessTypeAliasesAndRewriteNulls(propertyInfo.Type)));
+            stringBuilder.Append(GetRenderedTypeName(ProcessTypeInformation(propertyInfo.Type)));
             stringBuilder.Append(' ');
 
             if (!string.IsNullOrWhiteSpace(prefixTypeName))
@@ -443,12 +443,12 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                     continue;
                 }
 
-                if (IsFinalTypeTooComplexToRender(ProcessTypeAliasesAndRewriteNulls(methodInfo.ReturnType)))
+                if (IsFinalTypeTooComplexToRender(ProcessTypeInformation(methodInfo.ReturnType)))
                 {
                     continue;
                 }
 
-                if (methodInfo.Parameters.Any(parameterInfo => IsFinalTypeTooComplexToRender(ProcessTypeAliasesAndRewriteNulls(parameterInfo.Type))))
+                if (methodInfo.Parameters.Any(parameterInfo => IsFinalTypeTooComplexToRender(ProcessTypeInformation(parameterInfo.Type))))
                 {
                     continue;
                 }
@@ -511,12 +511,12 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                     continue;
                 }
 
-                if (IsFinalTypeTooComplexToRender(ProcessTypeAliasesAndRewriteNulls(constructorInfo.ReturnType)))
+                if (IsFinalTypeTooComplexToRender(ProcessTypeInformation(constructorInfo.ReturnType)))
                 {
                     continue;
                 }
 
-                if (constructorInfo.Parameters.Any(parameterInfo => IsFinalTypeTooComplexToRender(ProcessTypeAliasesAndRewriteNulls(parameterInfo.Type))))
+                if (constructorInfo.Parameters.Any(parameterInfo => IsFinalTypeTooComplexToRender(ProcessTypeInformation(parameterInfo.Type))))
                 {
                     continue;
                 }
@@ -570,7 +570,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             {
                 // FIXME: We are skipping any properties that are not simple enough for a 1 to 1 translation.
                 //        For example, nothing with generics, union types, intersection types, or function parameters.
-                if (IsFinalTypeTooComplexToRender(ProcessTypeAliasesAndRewriteNulls(propertyInfo.Type)))
+                if (IsFinalTypeTooComplexToRender(ProcessTypeInformation(propertyInfo.Type)))
                 {
                     continue;
                 }
@@ -724,7 +724,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 stringBuilder.Append(Environment.NewLine);
 
                 var parametersString = string.Join(", ", constructorInfo.Parameters.Select(p => p.GetNameForCSharp()));
-                var processedReturnType = ProcessTypeAliasesAndRewriteNulls(constructorInfo.ReturnType);
+                var processedReturnType = ProcessTypeInformation(constructorInfo.ReturnType);
                 var returnRenderedTypeName = GetRenderedTypeName(processedReturnType);
 
                 stringBuilder.AppendLine(Indent(3) + $"return this.CallConstructor<{returnRenderedTypeName}>({parametersString});");
@@ -758,7 +758,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
                 var parametersString = string.Join(", ", methodInfo.Parameters.Select(p => p.GetNameForCSharp()));
                 var parametersPrefix = string.IsNullOrWhiteSpace(parametersString) ? string.Empty : ", ";
-                var processedReturnType = ProcessTypeAliasesAndRewriteNulls(methodInfo.ReturnType);
+                var processedReturnType = ProcessTypeInformation(methodInfo.ReturnType);
                 var returnRenderedTypeName = GetRenderedTypeName(processedReturnType);
 
                 stringBuilder.AppendLine(Indent(3) + $"var functionObj = this.GetPropertyOfObject<JSFunction>(\"{methodInfo.Name}\");");
@@ -798,7 +798,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 stringBuilder.Append(Environment.NewLine);
                 stringBuilder.AppendLine(Indent(2) + "{");
 
-                var returnRenderedTypeName = GetRenderedTypeName(ProcessTypeAliasesAndRewriteNulls(propertyInfo.Type));
+                var returnRenderedTypeName = GetRenderedTypeName(ProcessTypeInformation(propertyInfo.Type));
 
                 GeneratePropertyGetter(
                     stringBuilder,
@@ -907,7 +907,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
                         fullName.Append(typeParameter.Default == null
                             ? "IJSObject"
-                            : GetRenderedTypeName(ProcessTypeAliasesAndRewriteNulls(typeParameter.Default)));
+                            : GetRenderedTypeName(ProcessTypeInformation(typeParameter.Default)));
 
                         isFirst = false;
                     }
@@ -919,7 +919,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             return fullName.ToString();
         }
 
-        ProcessedTypeInfo ProcessTypeAliasesAndRewriteNulls(TypeInfo typeInfo)
+        ProcessedTypeInfo ProcessTypeInformation(TypeInfo typeInfo)
         {
             typeInfo = RewriteNullsForUnion(typeInfo);
 
@@ -928,7 +928,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             {
                 // FIXME: Does it make sense to convert `ProcessTypeAliasesAndRewriteNulls` into a public and
                 //        internal version to prevent this awkwardness?
-                var processedArrayItemType = ProcessTypeAliasesAndRewriteNulls(typeInfo.Array);
+                var processedArrayItemType = ProcessTypeInformation(typeInfo.Array);
 
                 typeInfo = typeInfo with
                 {
@@ -943,7 +943,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             }
 
             var processedTypeArguments = typeInfo.Single.TypeArguments
-                .Select(ProcessTypeAliasesAndRewriteNulls)
+                .Select(ProcessTypeInformation)
                 .Select(processedTypeArgument => processedTypeArgument.TypeInfo)
                 .ToValueImmutableList();
 
@@ -965,7 +965,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 if (typeAlias == null)
                 {
                     return anyTypeAliases
-                        ? ProcessTypeAliasesAndRewriteNulls(typeInfo)
+                        ? ProcessTypeInformation(typeInfo)
                         : new ProcessedTypeInfo(typeInfo);
                 }
 
@@ -1052,7 +1052,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                     continue;
                 }
 
-                var processedFinalTypeInfo = ProcessTypeAliasesAndRewriteNulls(globalVariableInfo.Type);
+                var processedFinalTypeInfo = ProcessTypeInformation(globalVariableInfo.Type);
 
                 if (IsFinalTypeTooComplexToRender(processedFinalTypeInfo))
                 {
