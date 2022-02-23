@@ -16,6 +16,22 @@
 
         var window = jsInProcessRuntime.GetWindow();
         window.console.clear();
+        var values = jsInProcessRuntime.CreateArray<IJSObject>();
+        values.PushItem(jsInProcessRuntime.CreateString("Hello Friends :)"));
+        values.PushItem(jsInProcessRuntime.CreateString("Goodbye Friends :("));
+        var valuesAsNormalArray = values.UnsafeCastTo<IArray<JSString>>();
+        window.console.log(values);
+
+        var zerothItem = valuesAsNormalArray[jsInProcessRuntime.CreateNumberFromInt(0)];
+        var onethItem = valuesAsNormalArray[jsInProcessRuntime.CreateNumberFromInt(1)];
+
+        Console.WriteLine($"arr[0] = {zerothItem.ConvertToDotNetString()}");
+        Console.WriteLine($"arr[1] = {onethItem.ConvertToDotNetString()}");
+
+        valuesAsNormalArray[jsInProcessRuntime.CreateNumberFromInt(1)] = jsInProcessRuntime.CreateString("New value");
+        var newOnethItem = valuesAsNormalArray[jsInProcessRuntime.CreateNumberFromInt(1)];
+
+        Console.WriteLine($"arr[1] new = {newOnethItem.ConvertToDotNetString()}");
 
         var results = window.document.getElementsByClassName(jsInProcessRuntime.CreateString("myClass"));
         Console.WriteLine($"Number of elements in collection: {results.length.ConvertToDotNetInt()}");
@@ -75,6 +91,5 @@
             var secondItem = theArray.GetItemAtIndex(jsInProcessRuntime.CreateNumberFromInt(1)).UnsafeCastTo<IDate>();
             Console.WriteLine(secondItem.toLocaleDateString().ConvertToDotNetString());
         }
-
     }
 }

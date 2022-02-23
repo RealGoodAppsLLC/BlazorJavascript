@@ -2,5 +2,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator.Models
 {
     public sealed record IndexerInfo(
         TypeInfo IndexType,
-        TypeInfo ReturnType);
+        string IndexName,
+        TypeInfo ReturnType,
+        bool IsReadonly);
 }

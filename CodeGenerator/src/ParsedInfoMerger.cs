@@ -50,7 +50,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                         existingInterface
                             .ExtendsList
                             .AddRange(@interface.ExtendsList)
-                            .Distinct()
+                            .DistinctSafeSlow()
                             .ToValueImmutableList(),
                         new InterfaceBodyInfo(
                             existingInterface

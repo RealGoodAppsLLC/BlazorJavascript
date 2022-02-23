@@ -86,5 +86,13 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
             var arrayObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructArray");
             return JSObjectFactory.CreateFromRuntimeObjectReference<JSArray>(jsRuntime, arrayObjectReference)!;
         }
+
+        public static JSArray<TJSObject> CreateArray<TJSObject>(
+            this IJSInProcessRuntime jsRuntime)
+            where TJSObject : class, IJSObject
+        {
+            var arrayObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructArray");
+            return JSObjectFactory.CreateFromRuntimeObjectReference<JSArray<TJSObject>>(jsRuntime, arrayObjectReference)!;
+        }
     }
 }

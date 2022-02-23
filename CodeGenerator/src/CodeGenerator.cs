@@ -1,642 +1,479 @@
 using RealGoodApps.ValueImmutableCollections;
 using System.Text;
-using RealGoodApps.BlazorJavascript.CodeGenerator.Models;
+using RealGoodApps.BlazorJavascript.CodeGenerator.Models.Processed;
 
 namespace RealGoodApps.BlazorJavascript.CodeGenerator
 {
     public class CodeGenerator
     {
-        private readonly ParsedInfo _parsedInfo;
+        private readonly ProcessedInfo _processedInfo;
         private readonly string _outputDirectory;
 
         public CodeGenerator(
-            ParsedInfo parsedInfo,
+            ProcessedInfo processedInfo,
             string outputDirectory)
         {
-            _parsedInfo = parsedInfo;
+            _processedInfo = processedInfo;
             _outputDirectory = outputDirectory;
         }
 
-        public int InterfaceCount { get; private set; }
-        public int GlobalCount { get; private set; }
-        public int PrototypeCount { get; private set; }
-        public int ConstructorImplementationCount { get; private set; }
-        public int MethodImplementationCount { get; private set; }
-        public int PropertyImplementationCount { get; private set; }
-        public int InterfaceConstructorCount { get; private set; }
-        public int InterfaceMethodCount { get; private set; }
-        public int InterfacePropertyCount { get; private set; }
-        public int AppendedGlobalsCount { get; private set; }
-
         public void Generate()
         {
-            foreach (var interfaceInfo in _parsedInfo.Interfaces)
+            foreach (var interfaceInfo in _processedInfo.Interfaces.Items)
             {
-                var contents = GenerateInterfaceFileContents(
-                    interfaceInfo.Name,
-                    interfaceInfo.ExtractTypeParametersResult,
-                    interfaceInfo.ExtendsList,
-                    interfaceInfo.Body,
-                    interfaceInfo.Name == GetGlobalThisInterfaceName());
+                var interfaceFileContents = RenderInterfaceFileContents(interfaceInfo);
 
                 var interfaceOutputPath = Path.Combine(
                     _outputDirectory,
                     "Interfaces",
-                    $"I{interfaceInfo.Name}.cs");
+                    $"{interfaceInfo.InterfaceName}.cs");
 
                 if (File.Exists(interfaceOutputPath))
                 {
                     throw new Exception($"File already exists: {interfaceOutputPath}");
                 }
 
-                File.WriteAllText(interfaceOutputPath, contents);
-
-                var prototypeContents = GeneratePrototypeFileContents(interfaceInfo, interfaceInfo.Name == GetGlobalThisInterfaceName());
-
-                var prototypeOutputPath = Path.Combine(
-                    _outputDirectory,
-                    "Prototypes",
-                    $"{interfaceInfo.Name}.cs");
-
-                if (File.Exists(prototypeOutputPath))
-                {
-                    throw new Exception($"File already exists: {prototypeOutputPath}");
-                }
-
-                File.WriteAllText(prototypeOutputPath, prototypeContents);
+                File.WriteAllText(interfaceOutputPath, interfaceFileContents);
             }
 
-            var globalsDefinedOutside = GetGlobalsDefinedOutsideOfGlobalThisInterface();
-
-            foreach (var globalDefinedOutside in globalsDefinedOutside)
+            foreach (var classInfo in _processedInfo.Classes.Items)
             {
-                var contents = GenerateGlobalVariableFileContents(globalDefinedOutside);
+                var classFileContents = RenderClassFileContents(classInfo);
 
-                var globalVariableOutputPath = Path.Combine(
+                var classOutputPath = Path.Combine(
                     _outputDirectory,
-                    "Globals",
-                    $"{globalDefinedOutside.GlobalVariableInfo.Name}Global.cs");
+                    "Classes",
+                    $"{classInfo.ClassName}.cs");
 
-                if (File.Exists(globalVariableOutputPath))
+                if (File.Exists(classOutputPath))
                 {
-                    throw new Exception($"File already exists: {globalVariableOutputPath}");
+                    throw new Exception($"File already exists: {classOutputPath}");
                 }
 
-                File.WriteAllText(globalVariableOutputPath, contents);
-
-                if (globalDefinedOutside.GlobalVariableInfo.InlineInterface != null)
-                {
-                    var inlineInterfaceContents = GenerateInterfaceFileContents(
-                        $"{globalDefinedOutside.GlobalVariableInfo.Name}Global",
-                        null,
-                        ValueImmutableList.Create<TypeInfo>(),
-                        globalDefinedOutside.GlobalVariableInfo.InlineInterface,
-                        false);
-
-                    var inlineInterfaceOutputPath = Path.Combine(
-                        _outputDirectory,
-                        "Interfaces",
-                        $"I{globalDefinedOutside.GlobalVariableInfo.Name}Global.cs");
-
-                    if (File.Exists(inlineInterfaceOutputPath))
-                    {
-                        throw new Exception($"File already exists: {inlineInterfaceOutputPath}");
-                    }
-
-                    File.WriteAllText(inlineInterfaceOutputPath, inlineInterfaceContents);
-                }
+                File.WriteAllText(classOutputPath, classFileContents);
             }
         }
 
-        private string GenerateInterfaceFileContents(
-            string interfaceName,
-            ExtractTypeParametersResult? extractTypeParametersResult,
-            ValueImmutableList<TypeInfo> interfaceExtendsList,
-            InterfaceBodyInfo interfaceBodyInfo,
-            bool isGlobalThis)
+        private static string RenderInterfaceFileContents(ProcessedInterfaceInfo interfaceInfo)
         {
-            InterfaceCount++;
-
             var stringBuilder = new StringBuilder();
 
             stringBuilder.AppendLine("/// <auto-generated />");
             stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.Attributes;");
             stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.BuiltIns;");
-            stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.GlobalVariables;");
-            stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.Prototypes;");
+            stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.Classes;");
             stringBuilder.AppendLine();
             stringBuilder.AppendLine("namespace RealGoodApps.BlazorJavascript.Interop.Interfaces");
             stringBuilder.AppendLine("{");
 
-            var genericCarrots = string.Empty;
+            stringBuilder.AppendLine($"{RenderIndent(1)}[JSObjectConstructor(typeof({interfaceInfo.InterfaceConstructor}))]");
 
-            if (extractTypeParametersResult?.TypeParameters.Any() == true)
+            var typeParametersRendered = RenderTypeParameters(interfaceInfo.TypeParameters);
+
+            stringBuilder.Append($"{RenderIndent(1)}public interface {interfaceInfo.InterfaceName}{typeParametersRendered}");
+
+            stringBuilder.Append(" : ");
+
+            foreach (var chainItem in interfaceInfo.ExtendsChain.Items)
             {
-                genericCarrots = $"<{string.Join(",", extractTypeParametersResult.TypeParameters.Select(_ => string.Empty))}>";
+                stringBuilder.Append(chainItem.TypeReference.TypeName);
+                stringBuilder.Append(", ");
             }
 
-            stringBuilder.AppendLine($"{Indent(1)}[JSObjectConstructor(typeof({interfaceName}{genericCarrots}))]");
-            stringBuilder.Append($"{Indent(1)}public interface I{interfaceName}");
-
-            if (extractTypeParametersResult != null)
-            {
-                stringBuilder.Append(ExtractTypeParametersString(extractTypeParametersResult));
-            }
-
-            var extendsList = interfaceExtendsList
-                .Select(extendTypeInfo => extendTypeInfo)
-                .Where(extendTypeInfo => extendTypeInfo.Single != null)
-                .Select(GetRenderedTypeName)
-                .Append("IJSObject")
-                .ToValueImmutableList();
-            stringBuilder.Append($" : {string.Join(", ", extendsList)}");
+            stringBuilder.Append("IJSObject");
             stringBuilder.Append(Environment.NewLine);
 
-            stringBuilder.AppendLine(Indent(1) + "{");
+            var typeParameterConstraints = RenderTypeParameterConstraints(interfaceInfo.TypeParameters);
 
-            // We only want constructors that come from the interface body, ignoring the extends list.
-            var constructors = GetConstructorsFromInterfaceBody(
-                interfaceBodyInfo,
-                extractTypeParametersResult,
-                ValueImmutableList.Create<TypeInfo>(),
-                ValueImmutableList.Create<InterfaceInfo>(),
-                null);
-
-            foreach (var (_, constructorInfo) in constructors)
+            if (!string.IsNullOrWhiteSpace(typeParameterConstraints))
             {
-                InterfaceConstructorCount++;
-
-                // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
-                stringBuilder.Append(Indent(2));
-                RenderConstructorBeginning(stringBuilder, constructorInfo, string.Empty);
-                stringBuilder.Append(';');
-                stringBuilder.Append(Environment.NewLine);
+                stringBuilder.AppendLine(RenderIndented(
+                    typeParameterConstraints,
+                    2));
             }
 
-            // We only want methods that come from the interface body, ignoring the extends list.
-            var methods = GetMethodsFromInterfaceBody(
-                interfaceBodyInfo,
-                extractTypeParametersResult,
-                ValueImmutableList.Create<TypeInfo>(),
-                ValueImmutableList.Create<InterfaceInfo>(),
-                null);
+            stringBuilder.AppendLine(RenderIndent(1) + "{");
 
-            foreach (var (_, methodInfo) in methods)
+            var isFirstInterfaceElement = true;
+
+            foreach (var constructor in interfaceInfo.Constructors.Items)
             {
-                InterfaceMethodCount++;
-
-                // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
-                stringBuilder.Append(Indent(2));
-                RenderMethodBeginning(stringBuilder, methodInfo, string.Empty);
-                stringBuilder.Append(';');
-                stringBuilder.Append(Environment.NewLine);
-            }
-
-            // Similar to above, we only want properties that come from the interface body, ignoring the extends list.
-            var properties = GetPropertiesFromInterfaceBody(
-                interfaceBodyInfo,
-                extractTypeParametersResult,
-                ValueImmutableList.Create<TypeInfo>(),
-                ValueImmutableList.Create<InterfaceInfo>(),
-                null);
-
-            foreach (var (_, propertyInfo) in properties)
-            {
-                InterfacePropertyCount++;
-
-                // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
-                stringBuilder.Append(Indent(2));
-                RenderPropertyBeginning(stringBuilder, propertyInfo, string.Empty);
-                stringBuilder.Append(" { get; ");
-                if (!propertyInfo.IsReadonly)
+                if (!isFirstInterfaceElement)
                 {
-                    stringBuilder.Append("set; ");
+                    stringBuilder.AppendLine();
                 }
 
-                stringBuilder.Append('}');
-                stringBuilder.Append(Environment.NewLine);
+                stringBuilder.AppendLine(RenderIndented(
+                    RenderMethodOrConstructorForInterface(
+                        constructor.ConstructorName,
+                        true,
+                        null,
+                        constructor.TypeParameters,
+                        constructor.Parameters,
+                        constructor.ReturnType,
+                        null),
+                    2));
+
+                isFirstInterfaceElement = false;
             }
 
-            if (isGlobalThis)
+            foreach (var method in interfaceInfo.Methods.Items)
             {
-                AppendGlobalsToInterface(stringBuilder);
+                if (!isFirstInterfaceElement)
+                {
+                    stringBuilder.AppendLine();
+                }
+
+                stringBuilder.AppendLine(RenderIndented(
+                    RenderMethodOrConstructorForInterface(
+                        method.MethodName,
+                        false,
+                        method.NativeMethodName,
+                        method.TypeParameters,
+                        method.Parameters,
+                        method.ReturnType,
+                        null),
+                    2));
+
+                isFirstInterfaceElement = false;
             }
 
-            stringBuilder.AppendLine(Indent(1) + "}");
+            foreach (var property in interfaceInfo.Properties.Items)
+            {
+                if (!isFirstInterfaceElement)
+                {
+                    stringBuilder.AppendLine();
+                }
+
+                stringBuilder.AppendLine(RenderIndented(
+                    RenderPropertyForInterface(property, null),
+                    2));
+
+                isFirstInterfaceElement = false;
+            }
+
+            foreach (var indexer in interfaceInfo.Indexers.Items)
+            {
+                if (!isFirstInterfaceElement)
+                {
+                    stringBuilder.AppendLine();
+                }
+
+                stringBuilder.AppendLine(RenderIndented(
+                    RenderIndexerForInterface(indexer, null),
+                    2));
+
+                isFirstInterfaceElement = false;
+            }
+
+            stringBuilder.AppendLine(RenderIndent(1) + "}");
             stringBuilder.AppendLine("}");
 
             return stringBuilder.ToString();
         }
 
-        private void AppendGlobalsToInterface(StringBuilder stringBuilder)
-        {
-            var globalsDefinedOutside = GetGlobalsDefinedOutsideOfGlobalThisInterface();
-
-            foreach (var globalDefinedOutside in globalsDefinedOutside)
-            {
-                AppendedGlobalsCount++;
-
-                // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
-                stringBuilder.Append(Indent(2));
-                stringBuilder.Append(globalDefinedOutside.InterfaceTypeName);
-                stringBuilder.Append(' ');
-                stringBuilder.Append(globalDefinedOutside.GlobalVariableInfo.Name);
-                stringBuilder.Append(" { get; }");
-                stringBuilder.Append(Environment.NewLine);
-            }
-        }
-
-        private void AppendGlobalsToPrototype(StringBuilder stringBuilder)
-        {
-            var globalsDefinedOutside = GetGlobalsDefinedOutsideOfGlobalThisInterface();
-
-            foreach (var globalDefinedOutside in globalsDefinedOutside)
-            {
-                // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
-                stringBuilder.AppendLine(Indent(2) + $"{globalDefinedOutside.InterfaceTypeName} IWindow.{globalDefinedOutside.GlobalVariableInfo.Name}");
-                stringBuilder.AppendLine(Indent(2) + "{");
-
-                GeneratePropertyGetter(
-                    stringBuilder,
-                    globalDefinedOutside.GlobalVariableInfo.Name,
-                    globalDefinedOutside.InterfaceTypeName);
-
-                stringBuilder.AppendLine(Indent(2) + "}");
-            }
-        }
-
-        private static void GeneratePropertyGetter(
-            StringBuilder stringBuilder,
-            string propertyName,
-            string propertyType)
-        {
-            stringBuilder.AppendLine(Indent(3) + $"get => this.GetPropertyOfObject<{propertyType}>(\"{propertyName}\");");
-        }
-
-        private static string ExtractTypeParametersString(ExtractTypeParametersResult extractTypeParametersResult)
+        private static string RenderClassFileContents(ProcessedClassInfo classInfo)
         {
             var stringBuilder = new StringBuilder();
-
-            if (extractTypeParametersResult.TypeParameters.Any())
-            {
-                stringBuilder.Append('<');
-
-                stringBuilder.Append(string.Join(", ", extractTypeParametersResult.TypeParameters
-                    .Select(typeParameter => typeParameter.Name)));
-
-                stringBuilder.Append('>');
-            }
-
-            return stringBuilder.ToString();
-        }
-
-        private string GetPrefixTypeNameForInterfaceSymbolImplementations(InterfaceInfo interfaceInfo)
-        {
-            var stringBuilder = new StringBuilder();
-
-            var typeParametersString = ExtractTypeParametersString(interfaceInfo.ExtractTypeParametersResult);
-            stringBuilder.Append($"I{interfaceInfo.Name}{typeParametersString}");
-
-            return stringBuilder.ToString();
-        }
-
-        private void RenderConstructorBeginning(
-            StringBuilder stringBuilder,
-            ConstructorInfo constructorInfo,
-            string prefixTypeName)
-        {
-            stringBuilder.Append(GetRenderedTypeName(constructorInfo.ReturnType));
-            stringBuilder.Append(' ');
-
-            if (!string.IsNullOrWhiteSpace(prefixTypeName))
-            {
-                stringBuilder.Append($"{prefixTypeName}.");
-            }
-
-            stringBuilder.Append(constructorInfo.GetNameForCSharp());
-
-            stringBuilder.Append('(');
-
-            var isFirst = true;
-
-            foreach (var parameterInfo in constructorInfo.Parameters)
-            {
-                if (!isFirst)
-                {
-                    stringBuilder.Append(", ");
-                }
-
-                stringBuilder.Append(GetRenderedTypeName(parameterInfo.Type));
-                stringBuilder.Append(' ');
-                stringBuilder.Append(parameterInfo.GetNameForCSharp());
-                isFirst = false;
-            }
-
-            stringBuilder.Append(')');
-        }
-
-        private void RenderMethodBeginning(
-            StringBuilder stringBuilder,
-            MethodInfo methodInfo,
-            string prefixTypeName)
-        {
-            stringBuilder.Append(GetRenderedTypeName(methodInfo.ReturnType));
-            stringBuilder.Append(' ');
-
-            if (!string.IsNullOrWhiteSpace(prefixTypeName))
-            {
-                stringBuilder.Append($"{prefixTypeName}.");
-            }
-
-            stringBuilder.Append(methodInfo.GetNameForCSharp());
-
-            stringBuilder.Append('(');
-
-            var isFirst = true;
-
-            foreach (var parameterInfo in methodInfo.Parameters)
-            {
-                if (!isFirst)
-                {
-                    stringBuilder.Append(", ");
-                }
-
-                stringBuilder.Append(GetRenderedTypeName(parameterInfo.Type));
-                stringBuilder.Append(' ');
-                stringBuilder.Append(parameterInfo.GetNameForCSharp());
-                isFirst = false;
-            }
-
-            stringBuilder.Append(')');
-        }
-
-        private void RenderPropertyBeginning(
-            StringBuilder stringBuilder,
-            PropertyInfo propertyInfo,
-            string prefixTypeName)
-        {
-            stringBuilder.Append(GetRenderedTypeName(propertyInfo.Type));
-            stringBuilder.Append(' ');
-
-            if (!string.IsNullOrWhiteSpace(prefixTypeName))
-            {
-                stringBuilder.Append($"{prefixTypeName}.");
-            }
-
-            stringBuilder.Append(propertyInfo.GetNameForCSharp());
-        }
-
-        private ValueImmutableList<(InterfaceInfo? OwnerInterface, MethodInfo MethodInfo)> GetMethodsFromInterfaceBody(
-            InterfaceBodyInfo interfaceBodyInfo,
-            ExtractTypeParametersResult? extractTypeParametersResult,
-            ValueImmutableList<TypeInfo> extendsList,
-            ValueImmutableList<InterfaceInfo> alreadyProcessedInterfaces,
-            InterfaceInfo? ownerInterface)
-        {
-            var methods = new List<(InterfaceInfo? InterfaceInfo, MethodInfo MethodInfo)>();
-
-            if (extendsList.Any())
-            {
-                foreach (var extendTypeInfo in extendsList)
-                {
-                    // FIXME: I am probably missing something, but when we process type aliases here it causes problems in detecting methods.
-                    if (extendTypeInfo.Single == null)
-                    {
-                        continue;
-                    }
-
-                    var extendInterfaceInfo = _parsedInfo.Interfaces.FirstOrDefault(i => i.Name == extendTypeInfo.Single.Name);
-
-                    if (extendInterfaceInfo == null
-                        || alreadyProcessedInterfaces.Any(i => i.Name == extendInterfaceInfo.Name))
-                    {
-                        continue;
-                    }
-
-                    alreadyProcessedInterfaces = alreadyProcessedInterfaces.Add(extendInterfaceInfo);
-
-                    methods.AddRange(GetMethodsFromInterfaceBody(
-                        extendInterfaceInfo.Body,
-                        extendInterfaceInfo.ExtractTypeParametersResult,
-                        extendInterfaceInfo.ExtendsList,
-                        alreadyProcessedInterfaces,
-                        extendInterfaceInfo));
-                }
-            }
-
-            if (extractTypeParametersResult != null && extractTypeParametersResult.TypeParameters.Any())
-            {
-                return methods.ToValueImmutableList();
-            }
-
-            foreach (var methodInfo in interfaceBodyInfo.Methods)
-            {
-                // FIXME: We are skipping any methods that are not simple enough for a 1 to 1 translation.
-                //        For example, nothing with generics, union types, intersection types, or function parameters.
-                if (methodInfo.ExtractTypeParametersResult.TypeParameters.Any())
-                {
-                    continue;
-                }
-
-                if (IsFinalTypeTooComplexToRender(methodInfo.ReturnType))
-                {
-                    continue;
-                }
-
-                if (methodInfo.Parameters.Any(parameterInfo => IsFinalTypeTooComplexToRender(parameterInfo.Type)))
-                {
-                    continue;
-                }
-
-                methods.Add((ownerInterface, methodInfo));
-            }
-
-            return methods.ToValueImmutableList();
-        }
-
-        private ValueImmutableList<(InterfaceInfo? OwnerInterface, ConstructorInfo ConstructorInfo)> GetConstructorsFromInterfaceBody(
-            InterfaceBodyInfo interfaceBodyInfo,
-            ExtractTypeParametersResult? extractTypeParametersResult,
-            ValueImmutableList<TypeInfo> extendsList,
-            ValueImmutableList<InterfaceInfo> alreadyProcessedInterfaces,
-            InterfaceInfo? ownerInterface)
-        {
-            var constructors = new List<(InterfaceInfo? InterfaceInfo, ConstructorInfo ConstructorInfo)>();
-
-            if (extendsList.Any())
-            {
-                foreach (var extendTypeInfo in extendsList)
-                {
-                    // FIXME: I am probably missing something, but when we process type aliases here it causes problems in detecting methods.
-                    if (extendTypeInfo.Single == null)
-                    {
-                        continue;
-                    }
-
-                    var extendInterfaceInfo = _parsedInfo.Interfaces.FirstOrDefault(i => i.Name == extendTypeInfo.Single.Name);
-
-                    if (extendInterfaceInfo == null
-                        || alreadyProcessedInterfaces.Any(i => i.Name == extendInterfaceInfo.Name))
-                    {
-                        continue;
-                    }
-
-                    alreadyProcessedInterfaces = alreadyProcessedInterfaces.Add(extendInterfaceInfo);
-
-                    constructors.AddRange(GetConstructorsFromInterfaceBody(
-                        extendInterfaceInfo.Body,
-                        extendInterfaceInfo.ExtractTypeParametersResult,
-                        extendInterfaceInfo.ExtendsList,
-                        alreadyProcessedInterfaces,
-                        extendInterfaceInfo));
-                }
-            }
-
-            if (extractTypeParametersResult != null && extractTypeParametersResult.TypeParameters.Any())
-            {
-                return constructors.ToValueImmutableList();
-            }
-
-            foreach (var constructorInfo in interfaceBodyInfo.Constructors)
-            {
-                // FIXME: We are skipping any constructors that are not simple enough for a 1 to 1 translation.
-                //        For example, nothing with generics, union types, intersection types, or function parameters.
-                if (constructorInfo.ExtractTypeParametersResult.TypeParameters.Any())
-                {
-                    continue;
-                }
-
-                if (IsFinalTypeTooComplexToRender(constructorInfo.ReturnType))
-                {
-                    continue;
-                }
-
-                if (constructorInfo.Parameters.Any(parameterInfo => IsFinalTypeTooComplexToRender(parameterInfo.Type)))
-                {
-                    continue;
-                }
-
-                constructors.Add((ownerInterface, constructorInfo));
-            }
-
-            return constructors.ToValueImmutableList();
-        }
-
-        private ValueImmutableList<(InterfaceInfo? OwnerInterface, PropertyInfo PropertyInfo)> GetPropertiesFromInterfaceBody(
-            InterfaceBodyInfo interfaceBodyInfo,
-            ExtractTypeParametersResult? extractTypeParametersResult,
-            ValueImmutableList<TypeInfo> extendsList,
-            ValueImmutableList<InterfaceInfo> alreadyProcessedInterfaces,
-            InterfaceInfo? ownerInterface)
-        {
-            var properties = new List<(InterfaceInfo? OwnerInterface, PropertyInfo PropertyInfo)>();
-
-            foreach (var extendTypeInfo in extendsList)
-            {
-                if (extendTypeInfo.Single == null)
-                {
-                    continue;
-                }
-
-                var extendInterfaceInfo = _parsedInfo.Interfaces.FirstOrDefault(i => i.Name == extendTypeInfo.Single.Name);
-
-                if (extendInterfaceInfo == null
-                    || alreadyProcessedInterfaces.Any(i => i.Name == extendInterfaceInfo.Name))
-                {
-                    continue;
-                }
-
-                alreadyProcessedInterfaces = alreadyProcessedInterfaces.Add(extendInterfaceInfo);
-
-                properties.AddRange(GetPropertiesFromInterfaceBody(
-                    extendInterfaceInfo.Body,
-                    extendInterfaceInfo.ExtractTypeParametersResult,
-                    extendInterfaceInfo.ExtendsList,
-                    alreadyProcessedInterfaces,
-                    extendInterfaceInfo));
-            }
-
-            if (extractTypeParametersResult != null && extractTypeParametersResult.TypeParameters.Any())
-            {
-                return properties.ToValueImmutableList();
-            }
-
-            foreach (var propertyInfo in interfaceBodyInfo.Properties)
-            {
-                // FIXME: We are skipping any properties that are not simple enough for a 1 to 1 translation.
-                //        For example, nothing with generics, union types, intersection types, or function parameters.
-                if (IsFinalTypeTooComplexToRender(propertyInfo.Type))
-                {
-                    continue;
-                }
-
-                properties.Add((ownerInterface, propertyInfo));
-            }
-
-            return properties.ToValueImmutableList();
-        }
-
-        private ValueImmutableList<GetAccessorInfo> GetGetAccessorsFromInterfaceRecursively(InterfaceInfo interfaceInfo)
-        {
-            var allGetAccessors = new List<GetAccessorInfo>();
-
-            foreach (var extendInfo in interfaceInfo.ExtendsList)
-            {
-                if (extendInfo.Single == null)
-                {
-                    continue;
-                }
-
-                var extendInterfaceInfo = _parsedInfo.Interfaces.FirstOrDefault(i => i.Name == extendInfo.Single.Name);
-
-                if (extendInterfaceInfo == null)
-                {
-                    continue;
-                }
-
-                allGetAccessors.AddRange(GetGetAccessorsFromInterfaceRecursively(extendInterfaceInfo));
-            }
-
-            allGetAccessors.AddRange(interfaceInfo.Body.GetAccessors);
-            return allGetAccessors.ToValueImmutableList();
-        }
-
-        private string GenerateGlobalVariableFileContents(GlobalDefinedOutsideOfGlobalThisInterface globalDefinedOutside)
-        {
-            GlobalCount++;
-
-            var stringBuilder = new StringBuilder();
-
-            var fullGlobalName = $"{globalDefinedOutside.GlobalVariableInfo.Name}Global";
 
             stringBuilder.AppendLine("/// <auto-generated />");
-            stringBuilder.AppendLine("using System;");
             stringBuilder.AppendLine("using Microsoft.JSInterop;");
+            stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.Attributes;");
             stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.BuiltIns;");
             stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.Extensions;");
             stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.Interfaces;");
-            stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.Prototypes;");
             stringBuilder.AppendLine();
-            stringBuilder.AppendLine("namespace RealGoodApps.BlazorJavascript.Interop.GlobalVariables");
+            stringBuilder.AppendLine("namespace RealGoodApps.BlazorJavascript.Interop.Classes");
             stringBuilder.AppendLine("{");
-            stringBuilder.AppendLine(Indent(1) + $"public class {fullGlobalName} : {globalDefinedOutside.InterfaceTypeName}, IJSObject");
-            stringBuilder.AppendLine(Indent(1) + "{");
 
-            stringBuilder.Append(GenerateJSObjectSubtypeBoilerPlate(fullGlobalName));
+            var typeParametersRendered = RenderTypeParameters(classInfo.TypeParameters);
 
-            stringBuilder.Append(GenerateInterfaceImplementations(
-                globalDefinedOutside.InterfaceTypeName,
-                globalDefinedOutside.InterfaceBodyInfo,
-                globalDefinedOutside.ExtractTypeParametersResult,
-                globalDefinedOutside.ExtendsList));
+            stringBuilder.AppendLine($"{RenderIndent(1)}public class {classInfo.ClassName}{typeParametersRendered} : {classInfo.InterfaceName}{typeParametersRendered}, IJSObject");
 
-            stringBuilder.AppendLine(Indent(1) + "}");
+            var typeParameterConstraints = RenderTypeParameterConstraints(classInfo.TypeParameters);
+
+            if (!string.IsNullOrWhiteSpace(typeParameterConstraints))
+            {
+                stringBuilder.AppendLine(RenderIndented(
+                    typeParameterConstraints,
+                    2));
+            }
+
+            stringBuilder.AppendLine(RenderIndent(1) + "{");
+
+            stringBuilder.AppendLine(RenderIndent(2) + $"public {classInfo.ClassName}(IJSInProcessRuntime jsInProcessRuntime, IJSObjectReference jsObjectReference)");
+            stringBuilder.AppendLine(RenderIndent(2) + "{");
+            stringBuilder.AppendLine(RenderIndent(3) + "Runtime = jsInProcessRuntime;");
+            stringBuilder.AppendLine(RenderIndent(3) + "ObjectReference = jsObjectReference;");
+            stringBuilder.AppendLine(RenderIndent(2) + "}");
+            stringBuilder.AppendLine();
+            stringBuilder.AppendLine(RenderIndent(2) + "public IJSInProcessRuntime Runtime { get; }");
+            stringBuilder.AppendLine(RenderIndent(2) + "public IJSObjectReference ObjectReference { get; }");
+
+            foreach (var implementation in classInfo.Implementations.Items)
+            {
+                var implementationContents = RenderClassImplementation(implementation);
+
+                if (string.IsNullOrWhiteSpace(implementationContents))
+                {
+                    continue;
+                }
+
+                stringBuilder.AppendLine();
+                stringBuilder.AppendLine(RenderIndented(implementationContents, 2));
+            }
+
+            stringBuilder.AppendLine(RenderIndent(1) + "}");
             stringBuilder.AppendLine("}");
 
             return stringBuilder.ToString();
         }
 
-        private static string Indent(int levels)
+        private static string RenderClassImplementation(ProcessedClassImplementationInfo implementationInfo)
+        {
+            var stringBuilder = new StringBuilder();
+
+            var isFirstElement = true;
+
+            foreach (var constructor in implementationInfo.Constructors.Items)
+            {
+                if (!isFirstElement)
+                {
+                    stringBuilder.AppendLine();
+                }
+
+                stringBuilder.AppendLine(RenderMethodOrConstructorForInterface(
+                    constructor.ConstructorName,
+                    true,
+                    null,
+                    constructor.TypeParameters,
+                    constructor.Parameters,
+                    constructor.ReturnType,
+                    implementationInfo.Prefix));
+
+                isFirstElement = false;
+            }
+
+            foreach (var method in implementationInfo.Methods.Items)
+            {
+                if (!isFirstElement)
+                {
+                    stringBuilder.AppendLine();
+                }
+
+                stringBuilder.AppendLine(RenderMethodOrConstructorForInterface(
+                    method.MethodName,
+                    false,
+                    method.NativeMethodName,
+                    method.TypeParameters,
+                    method.Parameters,
+                    method.ReturnType,
+                    implementationInfo.Prefix));
+
+                isFirstElement = false;
+            }
+
+            foreach (var property in implementationInfo.Properties.Items)
+            {
+                if (!isFirstElement)
+                {
+                    stringBuilder.AppendLine();
+                }
+
+                stringBuilder.AppendLine(RenderPropertyForInterface(property, implementationInfo.Prefix));
+                isFirstElement = false;
+            }
+
+            foreach (var indexer in implementationInfo.Indexers.Items)
+            {
+                if (!isFirstElement)
+                {
+                    stringBuilder.AppendLine();
+                }
+
+                stringBuilder.AppendLine(RenderIndexerForInterface(indexer, implementationInfo.Prefix));
+                isFirstElement = false;
+            }
+
+            return stringBuilder.ToString();
+        }
+
+        private static string RenderTypeParameters(ProcessedTypeParametersInfo typeParameters)
+        {
+            var typeParametersRendered = new StringBuilder();
+
+            if (typeParameters.Items.Any())
+            {
+                typeParametersRendered.Append('<');
+                typeParametersRendered.Append(string.Join(", ", typeParameters
+                    .Items
+                    .Select(i => i.Name)
+                    .ToValueImmutableList()));
+                typeParametersRendered.Append('>');
+            }
+
+            return typeParametersRendered.ToString();
+        }
+
+        private static string RenderTypeParameterConstraints(ProcessedTypeParametersInfo typeParameters)
+        {
+            var constraintsRendered = new StringBuilder();
+
+            var isFirst = true;
+
+            foreach (var typeParameter in typeParameters.Items)
+            {
+                if (!isFirst)
+                {
+                    constraintsRendered.Append(Environment.NewLine);
+                }
+
+                var constraintPart = typeParameter.Constraint == null
+                    ? string.Empty
+                    : $"{typeParameter.Constraint.Name}, ";
+
+                constraintsRendered.Append($"where {typeParameter.Name} : class, {constraintPart}IJSObject");
+                isFirst = false;
+            }
+
+            return constraintsRendered.ToString();
+        }
+
+        private static string RenderIndented(string text, int levels)
+        {
+            var indent = RenderIndent(levels);
+            var lines = text.SplitIntoLines();
+
+            var indentedString = new StringBuilder();
+
+            var isFirst = true;
+
+            foreach (var line in lines)
+            {
+                if (!isFirst)
+                {
+                    indentedString.Append(Environment.NewLine);
+                }
+
+                indentedString.Append($"{indent}{line}");
+                isFirst = false;
+            }
+
+            return indentedString.ToString();
+        }
+
+        private static string RenderParameters(ProcessedParametersInfo parameters)
+        {
+            var parametersRendered = new StringBuilder();
+
+            var isFirst = true;
+
+            foreach (var parameter in parameters.Items)
+            {
+                if (!isFirst)
+                {
+                    parametersRendered.Append(", ");
+                }
+
+                parametersRendered.Append(RenderParameter(parameter));
+                isFirst = false;
+            }
+
+            return parametersRendered.ToString();
+        }
+
+        private static string RenderParameterNames(ProcessedParametersInfo parameters)
+        {
+            var parameterNamesRendered = new StringBuilder();
+
+            var isFirst = true;
+
+            foreach (var parameter in parameters.Items)
+            {
+                if (!isFirst)
+                {
+                    parameterNamesRendered.Append(", ");
+                }
+
+                parameterNamesRendered.Append(parameter.Name);
+                isFirst = false;
+            }
+
+            return parameterNamesRendered.ToString();
+        }
+
+        private static string RenderMethodOrConstructorForInterface(
+            string methodOrConstructorName,
+            bool isConstructor,
+            string? internalMethodName,
+            ProcessedTypeParametersInfo typeParameters,
+            ProcessedParametersInfo parameters,
+            ProcessedReturnTypeInfo? returnType,
+            string? implementationPrefix)
+        {
+            var stringBuilder = new StringBuilder();
+
+            var typeParametersRendered = RenderTypeParameters(typeParameters);
+            var parametersRendered = RenderParameters(parameters);
+            // FIXME: It would be great to render comments here!
+
+            var implementationPrefixWithSeparator = implementationPrefix == null
+                ? string.Empty
+                : $"{implementationPrefix}.";
+
+            var returnTypeName = returnType == null
+                ? "void"
+                : returnType.TypeReference.TypeName;
+
+            stringBuilder.Append($"{returnTypeName} {implementationPrefixWithSeparator}{methodOrConstructorName}{typeParametersRendered}({parametersRendered})");
+
+            // Do not render type parameters for implementations.
+            if (implementationPrefix == null && typeParameters.Items.Any())
+            {
+                stringBuilder.Append(Environment.NewLine);
+                stringBuilder.Append(RenderIndented(
+                    RenderTypeParameterConstraints(typeParameters),
+                    1));
+            }
+
+            if (implementationPrefix == null)
+            {
+                stringBuilder.Append(';');
+            }
+            else
+            {
+                stringBuilder.Append(Environment.NewLine);
+                stringBuilder.AppendLine("{");
+
+                var renderedParameterNames = RenderParameterNames(parameters);
+
+                if (isConstructor)
+                {
+                    stringBuilder.AppendLine(RenderIndent(1) + $"return this.CallConstructor<{returnTypeName}>({renderedParameterNames});");
+                }
+                else
+                {
+                    stringBuilder.AppendLine(RenderIndent(1) + $"var methodObj = this.GetPropertyOfObject<JSFunction>(\"{internalMethodName}\");");
+
+                    var parametersPrefix = string.IsNullOrWhiteSpace(renderedParameterNames) ? string.Empty : ", ";
+
+                    if (returnType == null)
+                    {
+                        stringBuilder.AppendLine(RenderIndent(1) + $"methodObj.InvokeVoid(this{parametersPrefix}{renderedParameterNames});");
+                    }
+                    else
+                    {
+                        stringBuilder.AppendLine(RenderIndent(1) + $"return methodObj.Invoke<{returnTypeName}>(this{parametersPrefix}{renderedParameterNames});");
+                    }
+                }
+
+                stringBuilder.Append('}');
+            }
+
+            return stringBuilder.ToString();
+        }
+
+        private static string RenderIndent(int levels)
         {
             var indentationBuilder = new StringBuilder();
 
@@ -648,340 +485,114 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             return indentationBuilder.ToString();
         }
 
-        private string GeneratePrototypeFileContents(InterfaceInfo interfaceInfo, bool isGlobalThis)
-        {
-            PrototypeCount++;
-
-            var stringBuilder = new StringBuilder();
-
-            var typeParametersString = ExtractTypeParametersString(interfaceInfo.ExtractTypeParametersResult);
-
-            stringBuilder.AppendLine("/// <auto-generated />");
-            stringBuilder.AppendLine("using System;");
-            stringBuilder.AppendLine("using Microsoft.JSInterop;");
-            stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.BuiltIns;");
-            stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.Extensions;");
-            stringBuilder.AppendLine("using RealGoodApps.BlazorJavascript.Interop.Interfaces;");
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine("namespace RealGoodApps.BlazorJavascript.Interop.Prototypes");
-            stringBuilder.AppendLine("{");
-            stringBuilder.AppendLine($"{Indent(1)}public class {interfaceInfo.Name}{typeParametersString} : I{interfaceInfo.Name}{typeParametersString}, IJSObject");
-            stringBuilder.AppendLine(Indent(1) + "{");
-
-            stringBuilder.Append(GenerateJSObjectSubtypeBoilerPlate($"{interfaceInfo.Name}"));
-
-            stringBuilder.Append(GenerateInterfaceImplementations(
-                GetPrefixTypeNameForInterfaceSymbolImplementations(interfaceInfo),
-                interfaceInfo.Body,
-                interfaceInfo.ExtractTypeParametersResult,
-                interfaceInfo.ExtendsList));
-
-            if (isGlobalThis)
-            {
-                AppendGlobalsToPrototype(stringBuilder);
-            }
-
-            stringBuilder.AppendLine(Indent(1) + "}");
-            stringBuilder.AppendLine("}");
-
-            return stringBuilder.ToString();
-        }
-
-        private string GenerateInterfaceImplementations(
-            string defaultTypePrefix,
-            InterfaceBodyInfo interfaceBodyInfo,
-            ExtractTypeParametersResult? extractTypeParametersResult,
-            ValueImmutableList<TypeInfo> extendsList)
+        private static string RenderPropertyForInterface(
+            ProcessedPropertyInfo property,
+            string? implementationPrefix)
         {
             var stringBuilder = new StringBuilder();
 
-            var constructors = GetConstructorsFromInterfaceBody(
-                interfaceBodyInfo,
-                extractTypeParametersResult,
-                extendsList,
-                ValueImmutableList.Create<InterfaceInfo>(),
-                null);
+            var implementationPrefixWithSeparator = implementationPrefix == null
+                ? string.Empty
+                : $"{implementationPrefix}.";
 
-            foreach (var (constructorInterfaceInfo, constructorInfo) in constructors)
+            // FIXME: It would be great to render comments here!
+            stringBuilder.Append($"{property.ReturnType.TypeReference.TypeName} {implementationPrefixWithSeparator}{property.PropertyName}");
+
+            if (implementationPrefix == null)
             {
-                // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
-                stringBuilder.Append(Indent(2));
+                stringBuilder.Append(' ');
+                stringBuilder.Append('{');
+                stringBuilder.Append(' ');
 
-                var prefix = constructorInterfaceInfo == null
-                    ? defaultTypePrefix
-                    : GetPrefixTypeNameForInterfaceSymbolImplementations(constructorInterfaceInfo);
-
-                ConstructorImplementationCount++;
-
-                RenderConstructorBeginning(stringBuilder, constructorInfo, prefix);
-                stringBuilder.Append(Environment.NewLine);
-                stringBuilder.Append(Indent(2) + "{");
-                stringBuilder.Append(Environment.NewLine);
-
-                var parametersString = string.Join(", ", constructorInfo.Parameters.Select(p => p.GetNameForCSharp()));
-                var returnRenderedTypeName = GetRenderedTypeName(constructorInfo.ReturnType);
-
-                stringBuilder.AppendLine(Indent(3) + $"return this.CallConstructor<{returnRenderedTypeName}>({parametersString});");
-
-                stringBuilder.Append(Indent(2) + "}");
-                stringBuilder.Append(Environment.NewLine);
-            }
-
-            var methods = GetMethodsFromInterfaceBody(
-                interfaceBodyInfo,
-                extractTypeParametersResult,
-                extendsList,
-                ValueImmutableList.Create<InterfaceInfo>(),
-                null);
-
-            foreach (var (methodInterfaceInfo, methodInfo) in methods)
-            {
-                // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
-                stringBuilder.Append(Indent(2));
-
-                var prefix = methodInterfaceInfo == null
-                    ? defaultTypePrefix
-                    : GetPrefixTypeNameForInterfaceSymbolImplementations(methodInterfaceInfo);
-
-                MethodImplementationCount++;
-
-                RenderMethodBeginning(stringBuilder, methodInfo, prefix);
-                stringBuilder.Append(Environment.NewLine);
-                stringBuilder.Append(Indent(2) + "{");
-                stringBuilder.Append(Environment.NewLine);
-
-                var parametersString = string.Join(", ", methodInfo.Parameters.Select(p => p.GetNameForCSharp()));
-                var parametersPrefix = string.IsNullOrWhiteSpace(parametersString) ? string.Empty : ", ";
-                var returnRenderedTypeName = GetRenderedTypeName(methodInfo.ReturnType);
-
-                stringBuilder.AppendLine(Indent(3) + $"var functionObj = this.GetPropertyOfObject<JSFunction>(\"{methodInfo.Name}\");");
-
-                if (returnRenderedTypeName == "void")
+                if (property.Mode is ProcessedPropertyMode.GetterOnly or ProcessedPropertyMode.GetterAndSetter)
                 {
-                    stringBuilder.AppendLine(Indent(3) + $"functionObj.InvokeVoid(this{parametersPrefix}{parametersString});");
-                }
-                else
-                {
-                    stringBuilder.AppendLine(Indent(3) + $"return functionObj.Invoke<{returnRenderedTypeName}>(this{parametersPrefix}{parametersString});");
+                    stringBuilder.Append("get; ");
                 }
 
-                stringBuilder.Append(Indent(2) + "}");
-                stringBuilder.Append(Environment.NewLine);
-            }
-
-            var properties = GetPropertiesFromInterfaceBody(
-                interfaceBodyInfo,
-                extractTypeParametersResult,
-                extendsList,
-                ValueImmutableList.Create<InterfaceInfo>(),
-                null);
-
-            foreach (var (propertyInterfaceInfo, propertyInfo) in properties)
-            {
-                // FIXME: It would be nice to carry over any comments from the TypeScript definitions.
-                stringBuilder.Append(Indent(2));
-
-                var prefix = propertyInterfaceInfo == null
-                    ? defaultTypePrefix
-                    : GetPrefixTypeNameForInterfaceSymbolImplementations(propertyInterfaceInfo);
-
-                PropertyImplementationCount++;
-
-                RenderPropertyBeginning(stringBuilder, propertyInfo, prefix);
-                stringBuilder.Append(Environment.NewLine);
-                stringBuilder.AppendLine(Indent(2) + "{");
-
-                var returnRenderedTypeName = GetRenderedTypeName(propertyInfo.Type);
-
-                GeneratePropertyGetter(
-                    stringBuilder,
-                    propertyInfo.Name,
-                    returnRenderedTypeName);
-
-                if (!propertyInfo.IsReadonly)
+                if (property.Mode is ProcessedPropertyMode.SetterOnly or ProcessedPropertyMode.GetterAndSetter)
                 {
-                    stringBuilder.AppendLine(Indent(3) + $"set => this.SetPropertyOfObject(\"{propertyInfo.Name}\", value);");
+                    stringBuilder.Append("set; ");
                 }
 
-                stringBuilder.AppendLine(Indent(2) + "}");
-            }
-
-            return stringBuilder.ToString();
-        }
-
-        private static string GenerateJSObjectSubtypeBoilerPlate(string className)
-        {
-            var stringBuilder = new StringBuilder();
-
-            stringBuilder.AppendLine(Indent(2) + $"public {className}(IJSInProcessRuntime jsInProcessRuntime, IJSObjectReference jsObjectReference)");
-            stringBuilder.AppendLine(Indent(2) + "{");
-            stringBuilder.AppendLine(Indent(3) + "Runtime = jsInProcessRuntime;");
-            stringBuilder.AppendLine(Indent(3) + "ObjectReference = jsObjectReference;");
-            stringBuilder.AppendLine(Indent(2) + "}");
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine(Indent(2) + "public IJSInProcessRuntime Runtime { get; }");
-            stringBuilder.AppendLine(Indent(2) + "public IJSObjectReference ObjectReference { get; }");
-
-            return stringBuilder.ToString();
-        }
-
-        private bool IsFinalTypeTooComplexToRender(TypeInfo parameterInfoType)
-        {
-            // FIXME: Eventually, this method shouldn't really exist. It is just used to prevent us from having to handle complex type cases right now.
-            if (parameterInfoType.Array != null)
-            {
-                // We know that the array must have been processed too, so this is safe.
-                return IsFinalTypeTooComplexToRender(parameterInfoType.Array);
-            }
-
-            return parameterInfoType.Single == null
-                   || parameterInfoType.Single.IsUnhandled
-                   || parameterInfoType.Single.TypeArguments.Any(IsFinalTypeTooComplexToRender)
-                   || string.IsNullOrWhiteSpace(parameterInfoType.Single.Name);
-        }
-
-        private string GetRenderedTypeName(TypeInfo processedTypeInfo)
-        {
-            if (processedTypeInfo.Array != null)
-            {
-                var fullArrayName = new StringBuilder();
-                fullArrayName.Append("IJSArray");
-
-                fullArrayName.Append('<');
-                fullArrayName.Append(GetRenderedTypeName(processedTypeInfo.Array));
-                fullArrayName.Append('>');
-
-                return fullArrayName.ToString();
-            }
-
-            var singleTypeInfo = processedTypeInfo.Single;
-
-            if (singleTypeInfo == null)
-            {
-                throw new Exception("The type name can not be rendered properly due to complexity.");
-            }
-
-            var fullName = new StringBuilder();
-            fullName.Append(singleTypeInfo.GetNameForCSharp(_parsedInfo.Interfaces));
-
-            var typeArguments = singleTypeInfo
-                .TypeArguments
-                .WhereNotNull()
-                .ToValueImmutableList();
-
-            if (typeArguments.Any())
-            {
-                fullName.Append('<');
-                fullName.Append(string.Join(",", typeArguments.Select(GetRenderedTypeName)));
-                fullName.Append('>');
+                stringBuilder.Append('}');
             }
             else
             {
-                // There is a possibility that the type we are rendering is actually an interface that has one or more default type parameters.
-                var typeAsInterface =
-                    _parsedInfo.Interfaces.FirstOrDefault(interfaceInfo => interfaceInfo.Name == singleTypeInfo.Name);
+                stringBuilder.Append(Environment.NewLine);
+                stringBuilder.AppendLine("{");
 
-                if (typeAsInterface != null && typeAsInterface.ExtractTypeParametersResult.TypeParameters.Any())
+                if (property.Mode is ProcessedPropertyMode.GetterOnly or ProcessedPropertyMode.GetterAndSetter)
                 {
-                    fullName.Append('<');
-
-                    var isFirst = true;
-
-                    foreach (var typeParameter in typeAsInterface.ExtractTypeParametersResult.TypeParameters)
-                    {
-                        if (!isFirst)
-                        {
-                            fullName.Append(", ");
-                        }
-
-                        fullName.Append(typeParameter.Default == null
-                            ? "IJSObject"
-                            : GetRenderedTypeName(typeParameter.Default));
-
-                        isFirst = false;
-                    }
-
-                    fullName.Append('>');
+                    stringBuilder.AppendLine(RenderIndent(1) + $"get => this.GetPropertyOfObject<{property.ReturnType.TypeReference.TypeName}>(\"{property.NativePropertyName}\");");
                 }
+
+                if (property.Mode is ProcessedPropertyMode.SetterOnly or ProcessedPropertyMode.GetterAndSetter)
+                {
+                    stringBuilder.AppendLine(RenderIndent(1) + $"set => this.SetPropertyOfObject(\"{property.NativePropertyName}\", value);");
+                }
+
+                stringBuilder.Append('}');
             }
 
-            return fullName.ToString();
+            return stringBuilder.ToString();
         }
 
-        private sealed record GlobalDefinedOutsideOfGlobalThisInterface(
-            GlobalVariableInfo GlobalVariableInfo,
-            string InterfaceTypeName,
-            InterfaceBodyInfo InterfaceBodyInfo,
-            ExtractTypeParametersResult? ExtractTypeParametersResult,
-            ValueImmutableList<TypeInfo> ExtendsList);
-
-        private ValueImmutableList<GlobalDefinedOutsideOfGlobalThisInterface> GetGlobalsDefinedOutsideOfGlobalThisInterface()
+        private static string RenderIndexerForInterface(
+            ProcessedIndexerInfo indexer,
+            string? implementationPrefix)
         {
-            var globalThisInterface = _parsedInfo.Interfaces.First(interfaceInfo => interfaceInfo.Name == GetGlobalThisInterfaceName());
-            var allProperties = GetPropertiesFromInterfaceBody(
-                globalThisInterface.Body,
-                globalThisInterface.ExtractTypeParametersResult,
-                globalThisInterface.ExtendsList,
-                ValueImmutableList.Create<InterfaceInfo>(),
-                null);
-            var allWindowGetters = GetGetAccessorsFromInterfaceRecursively(globalThisInterface);
+            var stringBuilder = new StringBuilder();
 
-            var result = new List<GlobalDefinedOutsideOfGlobalThisInterface>();
+            var implementationPrefixWithSeparator = implementationPrefix == null
+                ? string.Empty
+                : $"{implementationPrefix}.";
 
-            foreach (var globalVariableInfo in _parsedInfo.GlobalVariables)
+            // FIXME: It would be great to render comments here!
+            var renderedParameter = RenderParameter(indexer.Parameter);
+            stringBuilder.Append($"{indexer.ReturnType.TypeReference.TypeName} {implementationPrefixWithSeparator}this[{renderedParameter}]");
+
+            if (implementationPrefix == null)
             {
-                // HACK: Let's exclude anything that was already defined in the `Window` interface.
-                if (allProperties.Any(propertyDetails => propertyDetails.PropertyInfo.Name == globalVariableInfo.Name)
-                    || allWindowGetters.Any(getAccessor => getAccessor.Name == globalVariableInfo.Name))
+                stringBuilder.Append(' ');
+                stringBuilder.Append('{');
+                stringBuilder.Append(' ');
+
+                stringBuilder.Append("get; ");
+
+                if (indexer.Mode == ProcessedIndexerMode.GetterAndSetter)
                 {
-                    continue;
+                    stringBuilder.Append("set; ");
                 }
 
-                if (globalVariableInfo.InlineInterface != null)
-                {
-                    result.Add(new GlobalDefinedOutsideOfGlobalThisInterface(
-                        globalVariableInfo,
-                        $"I{globalVariableInfo.Name}Global",
-                        globalVariableInfo.InlineInterface,
-                        null,
-                        ValueImmutableList.Create<TypeInfo>()));
+                stringBuilder.Append('}');
+            }
+            else
+            {
+                stringBuilder.Append(Environment.NewLine);
+                stringBuilder.AppendLine("{");
 
-                    continue;
+                stringBuilder.AppendLine(RenderIndent(1) + $"get => this.GetIndexerOfObject<{indexer.ReturnType.TypeReference.TypeName}>({indexer.Parameter.Name});");
+
+                if (indexer.Mode == ProcessedIndexerMode.GetterAndSetter)
+                {
+                    stringBuilder.AppendLine(RenderIndent(1) + $"set => this.SetIndexerOfObject({indexer.Parameter.Name}, value);");
                 }
 
-                if (globalVariableInfo.Type == null)
-                {
-                    continue;
-                }
-
-                if (IsFinalTypeTooComplexToRender(globalVariableInfo.Type))
-                {
-                    continue;
-                }
-
-                var globalInterfaceType = _parsedInfo.Interfaces.FirstOrDefault(i => i.Name == globalVariableInfo.Type.Single?.Name);
-
-                if (globalInterfaceType == null)
-                {
-                    continue;
-                }
-
-                result.Add(new GlobalDefinedOutsideOfGlobalThisInterface(
-                    globalVariableInfo,
-                    GetPrefixTypeNameForInterfaceSymbolImplementations(globalInterfaceType),
-                    globalInterfaceType.Body,
-                    globalInterfaceType.ExtractTypeParametersResult,
-                    globalInterfaceType.ExtendsList));
+                stringBuilder.Append('}');
             }
 
-            return result.ToValueImmutableList();
+            return stringBuilder.ToString();
         }
 
-        private string GetGlobalThisInterfaceName()
+        private static string RenderParameter(ProcessedParameterInfo parameter)
         {
-            // FIXME: Right now, we know the globalThis is a `Window`, but we might not want to assume this
-            //        in the future, especially if this code is used to generate bindings for libraries.
-            return "Window";
+            var stringBuilder = new StringBuilder();
+
+            stringBuilder.Append(parameter.TypeReference.TypeName);
+            stringBuilder.Append(' ');
+            stringBuilder.Append(parameter.Name);
+
+            return stringBuilder.ToString();
         }
     }
 }

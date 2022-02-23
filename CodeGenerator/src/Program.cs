@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using RealGoodApps.BlazorJavascript.CodeGenerator.Models;
+using RealGoodApps.BlazorJavascript.CodeGenerator.Models.Processed;
 using RealGoodApps.ValueImmutableCollections;
 
 namespace RealGoodApps.BlazorJavascript.CodeGenerator
@@ -31,14 +32,14 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             }
 
             Directory.CreateDirectory(outputDirectory);
-            Directory.CreateDirectory(Path.Combine(outputDirectory, "Prototypes"));
-            Directory.CreateDirectory(Path.Combine(outputDirectory, "Globals"));
+            Directory.CreateDirectory(Path.Combine(outputDirectory, "Classes"));
             Directory.CreateDirectory(Path.Combine(outputDirectory, "Interfaces"));
 
             var typeDefinitionFiles = new[]
             {
                 "lib.dom.d",
                 "lib.es5.d",
+                "lib.es2015.promise.d",
             };
 
             var parsedInfoList = new List<ParsedInfo>();
@@ -72,24 +73,43 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             var typeSimplifier = new TypeSimplifier(mergedParseInfo);
             var simplifiedParsedInfo = typeSimplifier.Simplify();
 
+            var processor = new ParsedInfoProcessor(simplifiedParsedInfo);
+            var processedInfo = processor.Process();
+
             var generator = new CodeGenerator(
-                simplifiedParsedInfo,
+                processedInfo,
                 outputDirectory);
 
             generator.Generate();
 
+            var stats = new GeneratedStats(
+                processedInfo.Interfaces.Items.Count,
+                processedInfo.Classes.Items.Count,
+                processedInfo.Classes.Items
+                    .Sum(c => c.Implementations.Items.Sum(i => i.Constructors.Items.Count)),
+                processedInfo.Classes.Items
+                    .Sum(c => c.Implementations.Items.Sum(i => i.Methods.Items.Count)),
+                processedInfo.Classes.Items
+                    .Sum(c => c.Implementations.Items.Sum(i => i.Properties.Items.Count)),
+                processedInfo.Classes.Items
+                    .Sum(c => c.Implementations.Items.Sum(i => i.Indexers.Items.Count)),
+                processedInfo.Interfaces.Items.Sum(i => i.Constructors.Items.Count),
+                processedInfo.Interfaces.Items.Sum(i => i.Methods.Items.Count),
+                processedInfo.Interfaces.Items.Sum(i => i.Properties.Items.Count),
+                processedInfo.Interfaces.Items.Sum(i => i.Indexers.Items.Count));
+
             Console.WriteLine("Generated interop code!");
             Console.WriteLine("---");
-            Console.WriteLine($"Interface count: {generator.InterfaceCount}");
-            Console.WriteLine($"Global count: {generator.GlobalCount}");
-            Console.WriteLine($"Prototype count: {generator.PrototypeCount}");
-            Console.WriteLine($"Constructor implementation count: {generator.ConstructorImplementationCount}");
-            Console.WriteLine($"Method implementation count: {generator.MethodImplementationCount}");
-            Console.WriteLine($"Property implementation count: {generator.PropertyImplementationCount}");
-            Console.WriteLine($"Interface constructor count: {generator.InterfaceConstructorCount}");
-            Console.WriteLine($"Interface method count: {generator.InterfaceMethodCount}");
-            Console.WriteLine($"Interface property count: {generator.InterfacePropertyCount}");
-            Console.WriteLine($"Appended globals count: {generator.AppendedGlobalsCount}");
+            Console.WriteLine($"Interface count: {stats.InterfaceCount}");
+            Console.WriteLine($"Class count: {stats.ClassCount}");
+            Console.WriteLine($"Constructor implementation count: {stats.ConstructorImplementationCount}");
+            Console.WriteLine($"Method implementation count: {stats.MethodImplementationCount}");
+            Console.WriteLine($"Property implementation count: {stats.PropertyImplementationCount}");
+            Console.WriteLine($"Indexer implementation count: {stats.IndexerImplementationCount}");
+            Console.WriteLine($"Interface constructor count: {stats.InterfaceConstructorCount}");
+            Console.WriteLine($"Interface method count: {stats.InterfaceMethodCount}");
+            Console.WriteLine($"Interface property count: {stats.InterfacePropertyCount}");
+            Console.WriteLine($"Interface indexer count: {stats.InterfaceIndexerCount}");
 
             if (!string.IsNullOrWhiteSpace(outputStatsPath))
             {
@@ -99,18 +119,6 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 {
                     Directory.CreateDirectory(outputStatsDirectory);
                 }
-
-                var stats = new GeneratedStats(
-                    generator.InterfaceCount,
-                    generator.GlobalCount,
-                    generator.PrototypeCount,
-                    generator.ConstructorImplementationCount,
-                    generator.MethodImplementationCount,
-                    generator.PropertyImplementationCount,
-                    generator.InterfaceConstructorCount,
-                    generator.InterfaceMethodCount,
-                    generator.InterfacePropertyCount,
-                    generator.AppendedGlobalsCount);
 
                 File.WriteAllText(outputStatsPath, JsonConvert.SerializeObject(stats, Formatting.Indented));
             }

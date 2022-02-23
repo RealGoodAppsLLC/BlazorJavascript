@@ -7,6 +7,7 @@ import { PropertyInfo } from "./properties";
 import { MethodInfo } from "./methods";
 import { IndexerInfo } from "./indexers";
 import { GetAccessorInfo, SetAccessorInfo } from "./accessors";
+import {TypeAliasInfo} from "./typealias";
 
 const recursiveCheckForNonSimpleTypeArgument = (result: TypeInfo): boolean => {
     let anyNodeNotSimple = false;
@@ -164,6 +165,7 @@ export const runPostProcessingInterfaceBody = (interfaceInfo: InterfaceBodyInfo)
 export const runPostProcessing = (parsedInfo: ParsedInfo): ParsedInfo => {
     let postProcessedGlobalVariables: GlobalVariableInfo[] = [];
     let postProcessedInterfaces: InterfaceInfo[] = [];
+    let postProcessedTypeAliases: TypeAliasInfo[] = [];
 
     parsedInfo.globalVariables.forEach(globalVariable => {
         if (globalVariable.type !== null && recursiveCheckForNonSimpleTypeArgument(globalVariable.type)) {
@@ -196,9 +198,17 @@ export const runPostProcessing = (parsedInfo: ParsedInfo): ParsedInfo => {
         });
     });
 
+    parsedInfo.typeAliases.forEach(typeAliasInfo => {
+        if (typeAliasInfo.extractTypeParametersResult.anyConstraintsAreNotSimple) {
+            return;
+        }
+
+        postProcessedTypeAliases.push(typeAliasInfo);
+    });
+
     return {
         globalVariables: postProcessedGlobalVariables,
         interfaces: postProcessedInterfaces,
-        typeAliases: parsedInfo.typeAliases,
+        typeAliases: postProcessedTypeAliases,
     };
 };

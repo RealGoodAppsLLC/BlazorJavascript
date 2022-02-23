@@ -7,20 +7,6 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
     {
         private readonly ParsedInfo _parsedInfo;
 
-        private static readonly TypeInfo AnyType = new(
-            null,
-            null,
-            null,
-            new SingleTypeInfo(
-                "any",
-                null,
-                null,
-                null,
-                ValueImmutableList.Create<TypeInfo>(),
-                false),
-            null,
-            null);
-
         public TypeSimplifier(ParsedInfo parsedInfo)
         {
             _parsedInfo = parsedInfo;
@@ -110,7 +96,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
             if (containsAny)
             {
-                return AnyType;
+                return TypeInfo.AnyType;
             }
 
             var finalTypeList = new List<TypeInfo>();
@@ -126,7 +112,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             }
 
             // Deduplicate.
-            finalTypeList = finalTypeList.Distinct().ToList();
+            finalTypeList = finalTypeList.DistinctSafeSlow().ToList();
 
             // Unwrap and simplify if there is only 1 thing left.
             if (finalTypeList.Count == 1)
@@ -151,7 +137,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             var finalTypeList = intersectionTypeInfo.Types.ToList();
 
             // Deduplicate.
-            finalTypeList = finalTypeList.Distinct().ToList();
+            finalTypeList = finalTypeList.DistinctSafeSlow().ToList();
 
             // Unwrap and simplify if there is only 1 thing left.
             if (finalTypeList.Count == 1)
@@ -185,6 +171,40 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                         .ToValueImmutableList(),
                     SimplifyTypeInfo(functionTypeInfo.ReturnType)),
                 null);
+        }
+
+        private TypeInfo ExpandExtendDefaultTypeArguments(TypeInfo extendTypeInfo)
+        {
+            if (extendTypeInfo.Single == null || extendTypeInfo.Single.TypeArguments.Any())
+            {
+                return extendTypeInfo;
+            }
+
+            var matchingInterface = _parsedInfo.Interfaces.FirstOrDefault(i => i.Name == extendTypeInfo.Single.Name);
+
+            if (matchingInterface == null || !matchingInterface.ExtractTypeParametersResult.TypeParameters.Any())
+            {
+                return extendTypeInfo;
+            }
+
+            var newType = new TypeInfo(
+                null,
+                null,
+                null,
+                new SingleTypeInfo(
+                    extendTypeInfo.Single.Name,
+                    extendTypeInfo.Single.StringLiteral,
+                    extendTypeInfo.Single.BooleanLiteral,
+                    extendTypeInfo.Single.NumberLiteral,
+                    matchingInterface.ExtractTypeParametersResult
+                        .TypeParameters
+                        .Select(typeParameter => typeParameter.Default ?? TypeInfo.AnyType)
+                        .ToValueImmutableList(),
+                    extendTypeInfo.Single.IsUnhandled),
+                null,
+                null);
+
+            return newType;
         }
 
         private TypeInfo SimplifyTypeInfo(TypeInfo typeInfo)
@@ -259,6 +279,14 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                         typeInfo = simplifiedSingleInfo;
                         continue;
                     }
+
+                    var expandedSingleTypeInfo = ExpandExtendDefaultTypeArguments(typeInfo);
+
+                    if (expandedSingleTypeInfo != typeInfo)
+                    {
+                        typeInfo = expandedSingleTypeInfo;
+                        continue;
+                    }
                 }
 
                 return typeInfo;
@@ -269,7 +297,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
         {
             if (singleTypeInfo.IsUnhandled)
             {
-                return AnyType;
+                return TypeInfo.AnyType;
             }
 
             var simplifiedSingleType = new SingleTypeInfo(
@@ -313,7 +341,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             // `any` instead, which will have the same effect downstream.
             if (ContainsSelfReference(typeAlias.Name, typeAlias.AliasType))
             {
-                return AnyType;
+                return TypeInfo.AnyType;
             }
 
             // If there are no type parameters, we can just return the type alias directly.
@@ -640,7 +668,9 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
         {
             return new IndexerInfo(
                 SimplifyTypeInfo(indexerInfo.IndexType),
-                SimplifyTypeInfo(indexerInfo.ReturnType));
+                indexerInfo.IndexName,
+                SimplifyTypeInfo(indexerInfo.ReturnType),
+                indexerInfo.IsReadonly);
         }
 
         private GetAccessorInfo SimplifyGetAccessorInfo(GetAccessorInfo getAccessorInfo)

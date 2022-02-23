@@ -68,15 +68,15 @@ namespace RealGoodApps.BlazorJavascript.PagesGenerator
                     new List<StatInfo>
                     {
                         new("Interface count", codeGeneratorStats.InterfaceCount),
-                        new("Global count", codeGeneratorStats.GlobalCount),
-                        new("Prototype count", codeGeneratorStats.PrototypeCount),
+                        new("Class count", codeGeneratorStats.ClassCount + codeGeneratorStats.GlobalCount + codeGeneratorStats.PrototypeCount),
                         new("Constructor implementation count", codeGeneratorStats.ConstructorImplementationCount),
                         new("Method implementation count", codeGeneratorStats.MethodImplementationCount),
-                        new("Property implementation count", codeGeneratorStats.PropertyImplementationCount),
+                        new("Property implementation count", codeGeneratorStats.PropertyImplementationCount + codeGeneratorStats.AppendedGlobalsCount),
+                        new("Indexer implementation count", codeGeneratorStats.IndexerImplementationCount),
                         new("Interface constructor count", codeGeneratorStats.InterfaceConstructorCount),
                         new("Interface method count", codeGeneratorStats.InterfaceMethodCount),
-                        new("Interface property count", codeGeneratorStats.InterfacePropertyCount),
-                        new("Appended globals count", codeGeneratorStats.AppendedGlobalsCount),
+                        new("Interface property count", codeGeneratorStats.InterfacePropertyCount + codeGeneratorStats.AppendedGlobalsCount),
+                        new("Interface indexer count", codeGeneratorStats.InterfaceIndexerCount),
                     }.ToImmutableList()));
             }
 

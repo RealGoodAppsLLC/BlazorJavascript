@@ -47,6 +47,18 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
             return JSObjectFactory.CreateFromRuntimeObjectReference<TJSObject>(self.Runtime, returnValue);
         }
 
+        public static TJSObject? GetIndexerOfObject<TJSObject>(
+            this IJSObject self,
+            IJSObject? index)
+            where TJSObject : class, IJSObject
+        {
+            var returnValue = self.Runtime.Invoke<IJSObjectReference?>(
+                "__blazorJavascript_indexerGetFunction",
+                self.ObjectReference,
+                index?.ObjectReference);
+            return JSObjectFactory.CreateFromRuntimeObjectReference<TJSObject>(self.Runtime, returnValue);
+        }
+
         public static TValue? ConvertToValue<TValue>(
             this IJSObject self)
         {
@@ -62,6 +74,18 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
                 "__blazorJavascript_setterFunction",
                 self.ObjectReference,
                 propertyName,
+                value?.ObjectReference);
+        }
+
+        public static void SetIndexerOfObject(
+            this IJSObject self,
+            IJSObject? index,
+            IJSObject? value)
+        {
+            self.Runtime.InvokeVoid(
+                "__blazorJavascript_indexerSetFunction",
+                self.ObjectReference,
+                index?.ObjectReference,
                 value?.ObjectReference);
         }
     }

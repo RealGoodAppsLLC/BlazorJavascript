@@ -115,6 +115,21 @@ if (typeof window['blazorJavascript'] === 'undefined') {
         return blazorJavascript.wrapForInterop(r[k]);
     };
 
+    blazorJavascript.indexerGetFunction = function (o, k) {
+        if (blazorJavascript.checkIsNull(o) || blazorJavascript.checkIsUndefined(o)) {
+            return blazorJavascript.wrapForInterop(undefined);
+        }
+
+        let r = blazorJavascript.isInteropWrapped(o) ? o.reference : o;
+        let z = blazorJavascript.isInteropWrapped(k) ? k.reference : k;
+
+        if (typeof r[z] === "undefined") {
+            return blazorJavascript.wrapForInterop(undefined);
+        }
+
+        return blazorJavascript.wrapForInterop(r[z]);
+    };
+
     blazorJavascript.evalFunction = function (o) {
         return blazorJavascript.unwrap(o);
     };
@@ -127,6 +142,17 @@ if (typeof window['blazorJavascript'] === 'undefined') {
         let r = blazorJavascript.isInteropWrapped(o) ? o.reference : o;
 
         r[k] = blazorJavascript.unwrap(v);
+    };
+
+    blazorJavascript.indexerSetFunction = function (o, k, v) {
+        if (blazorJavascript.checkIsNull(o) || blazorJavascript.checkIsUndefined(o)) {
+            return;
+        }
+
+        let r = blazorJavascript.isInteropWrapped(o) ? o.reference : o;
+        let z = blazorJavascript.isInteropWrapped(k) ? k.reference : k;
+
+        r[z] = blazorJavascript.unwrap(v);
     };
 
     blazorJavascript.arrayItemAtIndex = function(o, i) {
