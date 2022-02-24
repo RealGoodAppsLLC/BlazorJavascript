@@ -69,8 +69,11 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             var merger = new ParsedInfoMerger(parsedInfoList.ToValueImmutableList());
             var mergedParseInfo = merger.Merge();
 
+            var typeSimplifier = new TypeSimplifier(mergedParseInfo);
+            var simplifiedParsedInfo = typeSimplifier.Simplify();
+
             var generator = new CodeGenerator(
-                mergedParseInfo,
+                simplifiedParsedInfo,
                 outputDirectory);
 
             generator.Generate();
