@@ -266,35 +266,10 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                     symbolGrouping.Key,
                     globalsDefinedOutside);
 
-                var prefixStringBuilder = new StringBuilder();
-
-                prefixStringBuilder.Append($"I{symbolGrouping.Key.OwnerInterface.Name}");
-
-                if (symbolGrouping.Key.OwnerInterface.ExtractTypeParametersResult.TypeParameters.Any())
-                {
-                    prefixStringBuilder.Append('<');
-
-                    if (symbolGrouping.Key.TypeArguments != null)
-                    {
-                        prefixStringBuilder.Append(string.Join(", ", symbolGrouping.Key
-                            .TypeArguments
-                            .Select(typeArgument => GetRenderedTypeName(
-                                typeArgument,
-                                symbolGrouping.Key,
-                                null,
-                                null))));
-                    }
-                    else
-                    {
-                        prefixStringBuilder.Append(string.Join(", ", symbolGrouping.Key.OwnerInterface.ExtractTypeParametersResult.TypeParameters
-                            .Select(typeParameter => typeParameter.Name)));
-                    }
-
-                    prefixStringBuilder.Append('>');
-                }
+                var symbolParentPrefix = BuildPrefixForSymbolParent(symbolGrouping.Key);
 
                 implementations.Add(new ProcessedClassImplementationInfo(
-                    prefixStringBuilder.ToString(),
+                    symbolParentPrefix,
                     new ProcessedConstructorsInfo(processedSymbols.Constructors.Items.ToValueImmutableList()),
                     new ProcessedMethodsInfo(processedSymbols.Methods.Items.ToValueImmutableList()),
                     new ProcessedPropertiesInfo(processedSymbols.Properties.Items.ToValueImmutableList()),
@@ -328,6 +303,38 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             return finalImplementations.ToValueImmutableList();
         }
 
+        private string BuildPrefixForSymbolParent(SymbolParent symbolParent)
+        {
+            var prefixStringBuilder = new StringBuilder();
+
+            prefixStringBuilder.Append($"I{symbolParent.OwnerInterface.Name}");
+
+            if (symbolParent.OwnerInterface.ExtractTypeParametersResult.TypeParameters.Any())
+            {
+                prefixStringBuilder.Append('<');
+
+                if (symbolParent.TypeArguments != null)
+                {
+                    prefixStringBuilder.Append(string.Join(", ", symbolParent
+                        .TypeArguments
+                        .Select(typeArgument => GetRenderedTypeName(
+                            typeArgument,
+                            symbolParent,
+                            null,
+                            null))));
+                }
+                else
+                {
+                    prefixStringBuilder.Append(string.Join(", ", symbolParent.OwnerInterface.ExtractTypeParametersResult
+                        .TypeParameters
+                        .Select(typeParameter => typeParameter.Name)));
+                }
+
+                prefixStringBuilder.Append('>');
+            }
+
+            return prefixStringBuilder.ToString();
+        }
 
         private ProcessedSymbols GetProcessedSymbols(
             ValueImmutableList<SymbolInfo> symbols,
