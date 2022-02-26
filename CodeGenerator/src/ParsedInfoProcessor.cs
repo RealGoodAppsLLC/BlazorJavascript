@@ -328,11 +328,6 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             return finalImplementations.ToValueImmutableList();
         }
 
-        public sealed record ProcessedSymbols(
-            ProcessedConstructorsInfo Constructors,
-            ProcessedMethodsInfo Methods,
-            ProcessedPropertiesInfo Properties,
-            ProcessedIndexersInfo Indexers);
 
         private ProcessedSymbols GetProcessedSymbols(
             ValueImmutableList<SymbolInfo> symbols,
