@@ -301,7 +301,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                     new ProcessedIndexersInfo(processedSymbols.Indexers.Items.ToValueImmutableList())));
             }
 
-            var deduplicatedImplementations = DeduplicateImplementations(implementations);
+            var deduplicatedImplementations = DeduplicateProcessedClassImplementations(implementations);
 
             return new ProcessedClassInfo(
                 $"{interfaceInfo.Name}",
@@ -310,7 +310,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 new ProcessedClassImplementationsInfo(deduplicatedImplementations.ToValueImmutableList()));
         }
 
-        private ValueImmutableList<ProcessedClassImplementationInfo> DeduplicateImplementations(
+        private static ValueImmutableList<ProcessedClassImplementationInfo> DeduplicateProcessedClassImplementations(
             List<ProcessedClassImplementationInfo> implementations)
         {
             var finalImplementations = new List<ProcessedClassImplementationInfo>();
