@@ -779,7 +779,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             return result.ToValueImmutableList();
         }
 
-        private string GetGlobalThisInterfaceName()
+        private static string GetGlobalThisInterfaceName()
         {
             // FIXME: Right now, we know the globalThis is a `Window`, but we might not want to assume this
             //        in the future, especially if this code is used to generate bindings for libraries.
