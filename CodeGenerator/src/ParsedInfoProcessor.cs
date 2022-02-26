@@ -219,7 +219,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             }
 
             // We only want symbols that come from the interface body, ignoring the extends list.
-            var symbols = GetSymbolsFromInterface(
+            var symbols = GetSymbolsFromParent(
                 parent,
                 false);
 
@@ -249,7 +249,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 interfaceInfo.ExtractTypeParametersResult.TypeParameters,
                 root);
 
-            var symbols = GetSymbolsFromInterface(
+            var symbols = GetSymbolsFromParent(
                 root,
                 true);
 
@@ -714,7 +714,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
         private ValueImmutableList<GlobalDefinedOutsideOfGlobalThisInterface> GetGlobalsDefinedOutsideOfGlobalThisInterface()
         {
             var globalThisInterface = _parsedInfo.Interfaces.First(interfaceInfo => interfaceInfo.Name == GetGlobalThisInterfaceName());
-            var allSymbols = GetSymbolsFromInterface(
+            var allSymbols = GetSymbolsFromParent(
                 SymbolParent.Root(globalThisInterface),
                 true);
 
@@ -781,7 +781,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             return "Window";
         }
 
-        private ValueImmutableList<SymbolInfo> GetSymbolsFromInterface(
+        private ValueImmutableList<SymbolInfo> GetSymbolsFromParent(
             SymbolParent parent,
             bool isRecursive)
         {
@@ -809,7 +809,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                         extendTypeInfo.Single.TypeArguments,
                         parent);
 
-                    symbols.AddRange(GetSymbolsFromInterface(
+                    symbols.AddRange(GetSymbolsFromParent(
                         nextParent,
                         true));
                 }
