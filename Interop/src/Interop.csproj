@@ -20,5 +20,7 @@
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </EmbeddedResource>
     </ItemGroup>
-    
+
+    <Import Project="../../Common.props" />
+
 </Project>
