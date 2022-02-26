@@ -546,6 +546,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                     propertySymbol.PropertyInfo.IsReadonly ? ProcessedPropertyMode.GetterOnly : ProcessedPropertyMode.GetterAndSetter));
             }
 
+            // Here we can patch in globals that weren't explicitly defined inside the globalThis interface.
             if (parent.OwnerInterface.Name == GetGlobalThisInterfaceName())
             {
                 foreach (var globalDefinedOutside in globalsDefinedOutside)
