@@ -5,6 +5,7 @@
 @inject IJSRuntime _jsRuntime
 
 <button id="printButton" @onclick="Print" class="myClass" style="color: red">Print</button>
+<span id="boop">This is a thing</span>
 
 @code {
     private void Print()
@@ -20,6 +21,37 @@
         var values = jsInProcessRuntime.CreateArray<IJSObject>();
         values.push(jsInProcessRuntime.CreateString("Hello Friends :)"));
         values.push(jsInProcessRuntime.CreateString("Goodbye Friends :("));
+
+        var myCallbackFn = jsInProcessRuntime.CreateAction<IString>((str) =>
+        {
+            Console.WriteLine($"The string is: {str.ConvertToDotNetString()}");
+        });
+
+        var filteredArray = values.filter(jsInProcessRuntime.CreateFunc<IString, IBoolean>(str =>
+        {
+            if (str.ConvertToDotNetString() == "Hello Friends :)")
+            {
+                return jsInProcessRuntime.CreateBoolean(true);
+            }
+
+            return jsInProcessRuntime.CreateBoolean(false);
+        }), null);
+        
+        filteredArray.forEach(myCallbackFn, null);
+        // values.forEach(myCallbackFn, null);
+
+        var domIds = jsInProcessRuntime.CreateArray<IString>();
+        domIds.push(jsInProcessRuntime.CreateString("printButton"));
+        domIds.push(jsInProcessRuntime.CreateString("boop"));
+
+        var domElements = domIds.map<IHTMLElement>(
+            jsInProcessRuntime.CreateFunc<IString, IHTMLElement>(selector => window.document.getElementById(selector)), null);
+
+        domElements.forEach(jsInProcessRuntime.CreateAction<IHTMLElement>(elem =>
+        {
+            Console.WriteLine(elem.outerHTML.ConvertToDotNetString());
+        }), null);
+        
         var valuesAsNormalArray = values.UnsafeCastTo<IArray<IString>>();
         window.console.log(values);
 

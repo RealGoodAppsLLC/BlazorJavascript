@@ -93,6 +93,71 @@ if (typeof window['blazorJavascript'] === 'undefined') {
         };
     };
 
+    const parametersWithIdentifiers = {};
+    const returnValuesWithIdentifiers = {};
+
+    blazorJavascript.generateUuid = () => {
+        return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+            (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+        );
+    };
+    
+    blazorJavascript.getParamByIdentifier = function(i) {
+        if (typeof parametersWithIdentifiers[i] == "undefined") {
+            delete parametersWithIdentifiers[i];
+            return blazorJavascript.wrapForInterop(undefined);
+        }
+        
+        let wrapped = blazorJavascript.wrapForInterop(parametersWithIdentifiers[i]);
+        delete parametersWithIdentifiers[i];
+        return wrapped;
+    };
+
+    blazorJavascript.storeReturnValue = function(o) {
+        let unwrapped = blazorJavascript.unwrap(o);
+        let identifier = blazorJavascript.generateUuid();
+        
+        returnValuesWithIdentifiers[identifier] = unwrapped;
+        return identifier;
+    };
+    
+    blazorJavascript.constructAction = function(o, n) {
+        function trampoline() {
+            let parameters = ['InvokeAction'];
+            
+            for (let argIndex = 0; argIndex < n; argIndex++) {
+                let parameterIdentifier = blazorJavascript.generateUuid();
+                parametersWithIdentifiers[parameterIdentifier] = blazorJavascript.unwrap(arguments[argIndex]);
+                
+                parameters.push(parameterIdentifier);
+            }
+
+            o.invokeMethod.apply(o, parameters);
+        }
+        
+        return blazorJavascript.wrapForInterop(trampoline);
+    };
+
+    blazorJavascript.constructFunc = function(o, n) {
+        function trampoline() {
+            let parameters = ['InvokeFunc'];
+
+            for (let argIndex = 0; argIndex < n; argIndex++) {
+                let parameterIdentifier = blazorJavascript.generateUuid();
+                parametersWithIdentifiers[parameterIdentifier] = arguments[argIndex];
+
+                parameters.push(parameterIdentifier);
+            }
+
+            let returnValueIdentifier = o.invokeMethod.apply(o, parameters);
+            let returnValue = returnValuesWithIdentifiers[returnValueIdentifier];
+            delete returnValuesWithIdentifiers[returnValueIdentifier];
+            return returnValue;
+        }
+
+        return blazorJavascript.wrapForInterop(trampoline);
+    };
+    
     blazorJavascript.unwrap = function(o) {
         if (blazorJavascript.isInteropWrapped(o)) {
             return o.reference;
