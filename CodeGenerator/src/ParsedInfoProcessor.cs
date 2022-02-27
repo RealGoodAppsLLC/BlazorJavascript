@@ -252,13 +252,18 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 true);
 
             var groupedSymbols = symbols
-                .GroupBy(s => s.Parent)
+                .GroupBySafeSlow(s => s.Parent)
                 .ToValueImmutableList();
 
             var implementations = new List<ProcessedClassImplementationInfo>();
 
             foreach (var symbolGrouping in groupedSymbols)
             {
+                if (symbolGrouping.Key == null)
+                {
+                    continue;
+                }
+
                 var processedSymbols = GetProcessedSymbols(
                     symbols,
                     symbolGrouping.Key,
