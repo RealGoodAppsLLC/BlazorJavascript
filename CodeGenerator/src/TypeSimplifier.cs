@@ -480,6 +480,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                             .Select(parameterInfo => new ParameterInfo(
                                 parameterInfo.Name,
                                 parameterInfo.IsOptional,
+                                parameterInfo.IsDotDotDot,
                                 ReplaceInstancesOfAliasTypeArguments(
                                     parameterInfo.Type,
                                     typeArguments,
@@ -642,6 +643,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             return new ParameterInfo(
                 parameterInfo.Name,
                 parameterInfo.IsOptional,
+                parameterInfo.IsDotDotDot,
                 SimplifyTypeInfo(parameterInfo.Type));
         }
 

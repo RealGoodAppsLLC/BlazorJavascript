@@ -22,77 +22,77 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
             return JSObjectFactory.CreateFromRuntimeObjectReference<TJSObject>(jsRuntime, objectReference);
         }
 
-        public static JSString? CreateString(
+        public static IString? CreateString(
             this IJSInProcessRuntime jsRuntime,
             string? stringValue)
         {
             var stringObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructString", stringValue);
-            return JSObjectFactory.CreateFromRuntimeObjectReference<JSString>(jsRuntime, stringObjectReference);
+            return JSObjectFactory.CreateFromRuntimeObjectReference<IString>(jsRuntime, stringObjectReference);
         }
 
-        public static JSNumber CreatePositiveInfinity(this IJSInProcessRuntime jsRuntime)
+        public static INumber CreatePositiveInfinity(this IJSInProcessRuntime jsRuntime)
         {
             var infinityObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructPositiveInfinity");
-            return JSObjectFactory.CreateFromRuntimeObjectReference<JSNumber>(jsRuntime, infinityObjectReference)!;
+            return JSObjectFactory.CreateFromRuntimeObjectReference<INumber>(jsRuntime, infinityObjectReference)!;
         }
 
-        public static JSNumber CreateNegativeInfinity(this IJSInProcessRuntime jsRuntime)
+        public static INumber CreateNegativeInfinity(this IJSInProcessRuntime jsRuntime)
         {
             var infinityObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructNegativeInfinity");
-            return JSObjectFactory.CreateFromRuntimeObjectReference<JSNumber>(jsRuntime, infinityObjectReference)!;
+            return JSObjectFactory.CreateFromRuntimeObjectReference<INumber>(jsRuntime, infinityObjectReference)!;
         }
 
-        public static JSNumber CreateNaN(this IJSInProcessRuntime jsRuntime)
+        public static INumber CreateNaN(this IJSInProcessRuntime jsRuntime)
         {
             var nanObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructNaN");
-            return JSObjectFactory.CreateFromRuntimeObjectReference<JSNumber>(jsRuntime, nanObjectReference)!;
+            return JSObjectFactory.CreateFromRuntimeObjectReference<INumber>(jsRuntime, nanObjectReference)!;
         }
 
-        public static JSNumber CreateNumberFromDouble(
+        public static INumber CreateNumberFromDouble(
             this IJSInProcessRuntime jsRuntime,
             double value)
         {
             var numberObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructNumberFromDouble", value);
-            return JSObjectFactory.CreateFromRuntimeObjectReference<JSNumber>(jsRuntime, numberObjectReference)!;
+            return JSObjectFactory.CreateFromRuntimeObjectReference<INumber>(jsRuntime, numberObjectReference)!;
         }
 
-        public static JSNumber CreateNumberFromInt(
+        public static INumber CreateNumberFromInt(
             this IJSInProcessRuntime jsRuntime,
             int value)
         {
             var numberObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructNumberFromInt", value);
-            return JSObjectFactory.CreateFromRuntimeObjectReference<JSNumber>(jsRuntime, numberObjectReference)!;
+            return JSObjectFactory.CreateFromRuntimeObjectReference<INumber>(jsRuntime, numberObjectReference)!;
         }
 
-        public static JSNumber CreateNumberFromFloat(
+        public static INumber CreateNumberFromFloat(
             this IJSInProcessRuntime jsRuntime,
             float value)
         {
             var numberObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructNumberFromFloat", value);
-            return JSObjectFactory.CreateFromRuntimeObjectReference<JSNumber>(jsRuntime, numberObjectReference)!;
+            return JSObjectFactory.CreateFromRuntimeObjectReference<INumber>(jsRuntime, numberObjectReference)!;
         }
 
-        public static JSBoolean CreateBoolean(
+        public static IBoolean CreateBoolean(
             this IJSInProcessRuntime jsRuntime,
             bool value)
         {
             var booleanObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructBoolean", value);
-            return JSObjectFactory.CreateFromRuntimeObjectReference<JSBoolean>(jsRuntime, booleanObjectReference)!;
+            return JSObjectFactory.CreateFromRuntimeObjectReference<IBoolean>(jsRuntime, booleanObjectReference)!;
         }
 
-        public static JSArray CreateArray(
+        public static IArray<IJSObject> CreateArray(
             this IJSInProcessRuntime jsRuntime)
         {
             var arrayObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructArray");
-            return JSObjectFactory.CreateFromRuntimeObjectReference<JSArray>(jsRuntime, arrayObjectReference)!;
+            return JSObjectFactory.CreateFromRuntimeObjectReference<IArray<IJSObject>>(jsRuntime, arrayObjectReference)!;
         }
 
-        public static JSArray<TJSObject> CreateArray<TJSObject>(
+        public static IArray<TJSObject> CreateArray<TJSObject>(
             this IJSInProcessRuntime jsRuntime)
             where TJSObject : class, IJSObject
         {
             var arrayObjectReference = jsRuntime.Invoke<IJSObjectReference?>("__blazorJavascript_constructArray");
-            return JSObjectFactory.CreateFromRuntimeObjectReference<JSArray<TJSObject>>(jsRuntime, arrayObjectReference)!;
+            return JSObjectFactory.CreateFromRuntimeObjectReference<IArray<TJSObject>>(jsRuntime, arrayObjectReference)!;
         }
     }
 }

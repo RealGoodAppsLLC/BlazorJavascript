@@ -56,8 +56,9 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
         {
             if (typeInfo.Array != null)
             {
+                // FIXME: We can use `IReadonlyArray` if we detect the `readonly` modifier!
                 var fullArrayName = new StringBuilder();
-                fullArrayName.Append("IJSArray");
+                fullArrayName.Append("IArray");
 
                 fullArrayName.Append('<');
                 fullArrayName.Append(GetRenderedTypeName(
@@ -73,7 +74,8 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             if (typeInfo.Function != null)
             {
                 // FIXME: Add variants for parameter types and return type.
-                return "JSFunction";
+                //        This might actually be kind of tricky, but could be really helpful.
+                return "IFunction";
             }
 
             if (typeInfo.Single == null)
@@ -100,29 +102,25 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
             if (singleTypeInfo.Name == null
                 || singleTypeInfo.Name == "any"
                 || singleTypeInfo.Name == "void"
-                || singleTypeInfo.Name == "null")
+                || singleTypeInfo.Name == "null"
+                || singleTypeInfo.Name == "undefined")
             {
                 return "IJSObject";
             }
 
-            if (singleTypeInfo.Name == "undefined")
-            {
-                return "JSUndefined";
-            }
-
             if (singleTypeInfo.Name == "boolean")
             {
-                return "JSBoolean";
+                return "IBoolean";
             }
 
             if (singleTypeInfo.Name == "string")
             {
-                return "JSString";
+                return "IString";
             }
 
             if (singleTypeInfo.Name == "number")
             {
-                return "JSNumber";
+                return "INumber";
             }
 
             var singleTypeInterface = _parsedInfo.Interfaces.FirstOrDefault(interfaceInfo => interfaceInfo.Name == singleTypeInfo.Name);
@@ -651,7 +649,8 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                             parent,
                             null,
                             null)),
-                        ReservedKeywords.SanitizeName(indexerSymbol.IndexerInfo.IndexName)),
+                        ReservedKeywords.SanitizeName(indexerSymbol.IndexerInfo.IndexName),
+                        false),
                     indexerSymbol.IndexerInfo.IsReadonly ? ProcessedIndexerMode.GetterOnly : ProcessedIndexerMode.GetterAndSetter));
             }
 
@@ -707,13 +706,33 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
             foreach (var parameter in parameters)
             {
-                processedParameters.Add(new ProcessedParameterInfo(
-                    new ProcessedTypeReferenceInfo(GetRenderedTypeName(
+                var renderedTypeNameBuilder = new StringBuilder();
+
+                if (parameter.IsDotDotDot)
+                {
+                    renderedTypeNameBuilder.Append("params ");
+
+                    renderedTypeNameBuilder.Append(GetRenderedTypeName(
+                        parameter.Type.Array ?? parameter.Type,
+                        parent,
+                        symbolTypeParameters,
+                        null));
+
+                    renderedTypeNameBuilder.Append("[]");
+                }
+                else
+                {
+                    renderedTypeNameBuilder.Append(GetRenderedTypeName(
                         parameter.Type,
                         parent,
                         symbolTypeParameters,
-                        null)),
-                    ReservedKeywords.SanitizeName(parameter.Name)));
+                        null));
+                }
+
+                processedParameters.Add(new ProcessedParameterInfo(
+                    new ProcessedTypeReferenceInfo(renderedTypeNameBuilder.ToString()),
+                    ReservedKeywords.SanitizeName(parameter.Name),
+                    parameter.IsDotDotDot));
             }
 
             return new ProcessedParametersInfo(processedParameters.ToValueImmutableList());

@@ -1,31 +1,23 @@
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.JSInterop;
+using RealGoodApps.BlazorJavascript.Interop.BuiltIns;
 using RealGoodApps.BlazorJavascript.Interop.Factories;
+using RealGoodApps.BlazorJavascript.Interop.Interfaces;
 
-namespace RealGoodApps.BlazorJavascript.Interop.BuiltIns
+namespace RealGoodApps.BlazorJavascript.Interop.Extensions
 {
-    public sealed class JSFunction : IJSObject
+    public static class IFunctionExtensions
     {
-        public JSFunction(
-            IJSInProcessRuntime jsInProcessRuntime,
-            IJSObjectReference jsObjectReference)
-        {
-            Runtime = jsInProcessRuntime;
-            ObjectReference = jsObjectReference;
-        }
-
-        public IJSInProcessRuntime Runtime { get; }
-        public IJSObjectReference ObjectReference { get; }
-
-        public TJSObject? Invoke<TJSObject>(
+        public static TJSObject? Invoke<TJSObject>(
+            this IFunction self,
             IJSObject? thisObject,
             params IJSObject?[]? args)
             where TJSObject : class, IJSObject
         {
             var allParams = new List<object?>
             {
-                ObjectReference,
+                self.ObjectReference,
                 thisObject?.ObjectReference,
             };
 
@@ -36,20 +28,21 @@ namespace RealGoodApps.BlazorJavascript.Interop.BuiltIns
                     .ToList());
             }
 
-            var returnValueObjectReference = Runtime.Invoke<IJSObjectReference?>(
+            var returnValueObjectReference = self.Runtime.Invoke<IJSObjectReference?>(
                 "__blazorJavascript_invokeFunction",
                 allParams.ToArray());
 
-            return JSObjectFactory.CreateFromRuntimeObjectReference<TJSObject>(Runtime, returnValueObjectReference);
+            return JSObjectFactory.CreateFromRuntimeObjectReference<TJSObject>(self.Runtime, returnValueObjectReference);
         }
 
-        public void InvokeVoid(
+        public static void InvokeVoid(
+            this IFunction self,
             IJSObject? thisObject,
             params IJSObject?[]? args)
         {
             var allParams = new List<object?>
             {
-                ObjectReference,
+                self.ObjectReference,
                 thisObject?.ObjectReference,
             };
 
@@ -60,7 +53,7 @@ namespace RealGoodApps.BlazorJavascript.Interop.BuiltIns
                     .ToList());
             }
 
-            Runtime.InvokeVoid(
+            self.Runtime.InvokeVoid(
                 "__blazorJavascript_invokeFunction",
                 allParams.ToArray());
         }

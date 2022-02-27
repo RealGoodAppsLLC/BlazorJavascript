@@ -16,10 +16,11 @@
 
         var window = jsInProcessRuntime.GetWindow();
         window.console.clear();
+        window.console.log(jsInProcessRuntime.CreateString("Check this out :)"));
         var values = jsInProcessRuntime.CreateArray<IJSObject>();
-        values.PushItem(jsInProcessRuntime.CreateString("Hello Friends :)"));
-        values.PushItem(jsInProcessRuntime.CreateString("Goodbye Friends :("));
-        var valuesAsNormalArray = values.UnsafeCastTo<IArray<JSString>>();
+        values.push(jsInProcessRuntime.CreateString("Hello Friends :)"));
+        values.push(jsInProcessRuntime.CreateString("Goodbye Friends :("));
+        var valuesAsNormalArray = values.UnsafeCastTo<IArray<IString>>();
         window.console.log(values);
 
         var zerothItem = valuesAsNormalArray[jsInProcessRuntime.CreateNumberFromInt(0)];
@@ -46,14 +47,18 @@
         Console.WriteLine(computedStyle.color.ConvertToDotNetString());
 
         var now = window.Date.now();
-        Console.WriteLine($"It is: {now.IsNaN()}");
-        Console.WriteLine($"It is: {now.IsInteger()}");
-        Console.WriteLine($"It is: {now.ConvertToDotNetLong()}");
+        // Console.WriteLine($"It is: {now.IsNaN()}");
+        // Console.WriteLine($"It is: {now.IsInteger()}");
+        // Console.WriteLine($"It is: {now.ConvertToDotNetLong()}");
 
         var body = window.document.body;
-        var appendChildFunction = body.GetPropertyOfObject<JSFunction>("appendChild");
+        var appendChildFunction = body.GetPropertyOfObject<IFunction>("appendChild");
+        if (appendChildFunction == null)
+        {
+            return;
+        }
         var newElement = window.document.createElement(jsInProcessRuntime.CreateString("button"), null).UnsafeCastTo<IHTMLButtonElement>();
-        appendChildFunction?.InvokeVoid(body, newElement);
+        appendChildFunction.InvokeVoid(body, newElement);
         newElement.disabled = jsInProcessRuntime.CreateBoolean(true);
         newElement.innerText = jsInProcessRuntime.CreateString("My Button");
         window.document.title = jsInProcessRuntime.CreateString("Well hello, there!");
@@ -74,21 +79,21 @@
         var anchorElement = window.document.createElement(jsInProcessRuntime.CreateString("a"), null).UnsafeCastTo<IHTMLAnchorElement>();
         anchorElement.setAttribute(jsInProcessRuntime.CreateString("href"), jsInProcessRuntime.CreateString("https://google.com"));
         var attributes = anchorElement.getAttributeNames();
-        var firstAttributeName = attributes.GetItemAtIndex(jsInProcessRuntime.CreateNumberFromInt(0));
+        var firstAttributeName = attributes[jsInProcessRuntime.CreateNumberFromInt(0)];
         Console.WriteLine($"First attribute name is: {firstAttributeName.ConvertToDotNetString()}");
         var someArray = jsInProcessRuntime.CreateArray();
         var magicArray = window.Array.construct(jsInProcessRuntime.CreateNumberFromInt(0));
 
-        foreach (var theArray in new IJSArray[] { someArray, magicArray })
+        foreach (var theArray in new[] { someArray, magicArray })
         {
             var initialLength = theArray.length;
             Console.WriteLine($"Initial array length: {initialLength.ConvertToDotNetInt()}");
-            var pushResult1 = theArray.PushItem(date);
+            var pushResult1 = theArray.push(date);
             Console.WriteLine($"Push result 1: {pushResult1.ConvertToDotNetInt()}");
-            var pushResult2 = theArray.PushItem(date2);
+            var pushResult2 = theArray.push(date2);
             Console.WriteLine($"Push result 2: {pushResult2.ConvertToDotNetInt()}");
 
-            var secondItem = theArray.GetItemAtIndex(jsInProcessRuntime.CreateNumberFromInt(1)).UnsafeCastTo<IDate>();
+            var secondItem = theArray[jsInProcessRuntime.CreateNumberFromInt(1)].UnsafeCastTo<IDate>();
             Console.WriteLine(secondItem.toLocaleDateString().ConvertToDotNetString());
         }
     }
