@@ -851,12 +851,85 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
             symbols.AddRange(interfaceBodyInfo
                 .Methods
-                .Select(methodInfo => SymbolInfo.From(parent, methodInfo))
+                .SelectMany(methodInfo =>
+                {
+                    var mainMethodSymbol = SymbolInfo.From(parent, methodInfo);
+
+                    var allMethodSymbols = new List<SymbolInfo>
+                    {
+                        mainMethodSymbol,
+                    };
+
+                    var isLastParameterDotDotDot = methodInfo.Parameters.LastOrDefault()?.IsDotDotDot ?? false;
+
+                    for (var parameterCount = methodInfo.Parameters.Count - (isLastParameterDotDotDot ? 1 : 0); parameterCount > 0; parameterCount--)
+                    {
+                        var lastParameterIndex = parameterCount - 1;
+                        if (!methodInfo.Parameters[lastParameterIndex].IsOptional)
+                        {
+                            break;
+                        }
+
+                        allMethodSymbols.Add(new SymbolInfo(
+                            parent,
+                            new MethodInfo(
+                                methodInfo.Name,
+                                methodInfo.ExtractTypeParametersResult,
+                                methodInfo.ReturnType,
+                                lastParameterIndex == 0
+                                    ? ValueImmutableList.Create<ParameterInfo>()
+                                    : methodInfo.Parameters.Take(parameterCount - 1).ToValueImmutableList()),
+                            null,
+                            null,
+                            null,
+                            null,
+                            null));
+                    }
+
+                    return allMethodSymbols;
+                })
+                .DistinctSafeSlow()
                 .ToValueImmutableList());
 
             symbols.AddRange(interfaceBodyInfo
                 .Constructors
-                .Select(constructorInfo => SymbolInfo.From(parent, constructorInfo))
+                .SelectMany(constructorInfo =>
+                {
+                    var mainConstructorSymbol = SymbolInfo.From(parent, constructorInfo);
+
+                    var allConstructorSymbols = new List<SymbolInfo>
+                    {
+                        mainConstructorSymbol,
+                    };
+
+                    var isLastParameterDotDotDot = constructorInfo.Parameters.LastOrDefault()?.IsDotDotDot ?? false;
+
+                    for (var parameterCount = constructorInfo.Parameters.Count - (isLastParameterDotDotDot ? 1 : 0); parameterCount > 0; parameterCount--)
+                    {
+                        var lastParameterIndex = parameterCount - 1;
+                        if (!constructorInfo.Parameters[lastParameterIndex].IsOptional)
+                        {
+                            break;
+                        }
+
+                        allConstructorSymbols.Add(new SymbolInfo(
+                            parent,
+                            null,
+                            new ConstructorInfo(
+                                constructorInfo.ReturnType,
+                                constructorInfo.ExtractTypeParametersResult,
+                                lastParameterIndex == 0
+                                    ? ValueImmutableList.Create<ParameterInfo>()
+                                    : constructorInfo.Parameters.Take(parameterCount - 1).ToValueImmutableList()),
+                            null,
+                            null,
+                            null,
+                            null));
+                    }
+
+                    return allConstructorSymbols;
+                })
+                .DistinctSafeSlow()
                 .ToValueImmutableList());
 
             symbols.AddRange(interfaceBodyInfo

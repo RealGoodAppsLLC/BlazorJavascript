@@ -4,11 +4,5 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator.Models
         string Name,
         bool IsOptional,
         bool IsDotDotDot,
-        TypeInfo Type)
-    {
-        public string GetNameForCSharp()
-        {
-            return ReservedKeywords.SanitizeName(this.Name);
-        }
-    }
+        TypeInfo Type);
 }
