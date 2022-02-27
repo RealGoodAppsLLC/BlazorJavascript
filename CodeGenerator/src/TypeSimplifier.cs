@@ -300,6 +300,57 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 return TypeInfo.AnyType;
             }
 
+            if (singleTypeInfo.StringLiteral != null)
+            {
+                return new TypeInfo(
+                    null,
+                    null,
+                    null,
+                    new SingleTypeInfo(
+                        "string",
+                        null,
+                        null,
+                        null,
+                        ValueImmutableList.Create<TypeInfo>(),
+                        false),
+                    null,
+                    null);
+            }
+
+            if (singleTypeInfo.NumberLiteral != null)
+            {
+                return new TypeInfo(
+                    null,
+                    null,
+                    null,
+                    new SingleTypeInfo(
+                        "number",
+                        null,
+                        null,
+                        null,
+                        ValueImmutableList.Create<TypeInfo>(),
+                        false),
+                    null,
+                    null);
+            }
+
+            if (singleTypeInfo.BooleanLiteral != null)
+            {
+                return new TypeInfo(
+                    null,
+                    null,
+                    null,
+                    new SingleTypeInfo(
+                        "boolean",
+                        null,
+                        null,
+                        null,
+                        ValueImmutableList.Create<TypeInfo>(),
+                        false),
+                    null,
+                    null);
+            }
+
             var simplifiedSingleType = new SingleTypeInfo(
                 singleTypeInfo.Name,
                 singleTypeInfo.StringLiteral,
