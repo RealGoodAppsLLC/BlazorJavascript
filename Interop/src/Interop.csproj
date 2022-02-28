@@ -12,7 +12,6 @@
         <PackageId>RealGoodApps.BlazorJavascript.Interop</PackageId>
         <PackageVersion>$(BlazorJavascriptInteropVersion)</PackageVersion>
         <Authors>RealGoodApps, LLC</Authors>
-        <PackageLicenseUrl>https://raw.githubusercontent.com/RealGoodAppsLLC/BlazorJavascript/main/LICENSE</PackageLicenseUrl>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageProjectUrl>https://github.com/RealGoodAppsLLC/BlazorJavascript</PackageProjectUrl>
         <RepositoryUrl>https://github.com/RealGoodAppsLLC/BlazorJavascript</RepositoryUrl>
