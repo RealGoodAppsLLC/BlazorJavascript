@@ -17,17 +17,19 @@
         <RepositoryUrl>https://github.com/RealGoodAppsLLC/BlazorJavascript</RepositoryUrl>
         <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
         <Description>Use web APIs via auto-generated JS interop classes in Blazor.</Description>
+        <Summary>Use web APIs via auto-generated JS interop classes in Blazor.</Summary>
+        <Title>BlazorJavascript Interop</Title>
         <PackageReleaseNotes>See the following: https://raw.githubusercontent.com/RealGoodAppsLLC/BlazorJavascript/main/CHANGELOG.md</PackageReleaseNotes>
         <Copyright>Copyright 2022 RealGoodApps, LLC</Copyright>
         <PackageTags>blazor javascript, javascript interop, web APIs, browser APIs, DOM APIs</PackageTags>
     </PropertyGroup>
 
     <ItemGroup Condition=" '$(TargetFramework)' == 'net5.0' ">
-        <PackageReference Include="Microsoft.JSInterop" Version="5.0.*" />
+        <PackageReference Include="Microsoft.JSInterop" Version="5.0.0" />
     </ItemGroup>
 
     <ItemGroup Condition=" '$(TargetFramework)' == 'net6.0' ">
-        <PackageReference Include="Microsoft.JSInterop" Version="6.0.*" />
+        <PackageReference Include="Microsoft.JSInterop" Version="6.0.0" />
     </ItemGroup>
 
     <ItemGroup>
