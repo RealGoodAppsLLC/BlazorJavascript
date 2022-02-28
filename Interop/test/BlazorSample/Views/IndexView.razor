@@ -16,28 +16,23 @@
         }
 
         var window = jsInProcessRuntime.GetWindow();
+
         window.console.clear();
         window.console.log(jsInProcessRuntime.CreateString("Check this out :)"));
         var values = jsInProcessRuntime.CreateArray<IJSObject>();
+
+        values.join(jsInProcessRuntime.CreateString("Hello Friends :)"));
+
+        values.push(null);
         values.push(jsInProcessRuntime.CreateString("Hello Friends :)"));
         values.push(jsInProcessRuntime.CreateString("Goodbye Friends :("));
 
-        var myCallbackFn = jsInProcessRuntime.CreateAction<IString>((str) =>
-        {
-            Console.WriteLine($"The string is: {str.ConvertToDotNetString()}");
-        });
+        window.console.log(values);
+        var myCallbackFn = jsInProcessRuntime.CreateAction<IString>(str => Console.WriteLine($"The string is: {str.ConvertToDotNetString()}"));
 
-        var filteredArray = values.filter(jsInProcessRuntime.CreateFunc<IString, IBoolean>(str =>
-        {
-            if (str.ConvertToDotNetString() == "Hello Friends :)")
-            {
-                return jsInProcessRuntime.CreateBoolean(true);
-            }
+        var filteredArray = values.filter(jsInProcessRuntime.CreateFunc<IString, IBoolean>(str => jsInProcessRuntime.CreateBoolean(str.ConvertToDotNetString() == "Hello Friends :)")));
 
-            return jsInProcessRuntime.CreateBoolean(false);
-        }), null);
-        
-        filteredArray.forEach(myCallbackFn, null);
+        filteredArray.forEach(myCallbackFn);
         // values.forEach(myCallbackFn, null);
 
         var domIds = jsInProcessRuntime.CreateArray<IString>();
@@ -45,13 +40,10 @@
         domIds.push(jsInProcessRuntime.CreateString("boop"));
 
         var domElements = domIds.map<IHTMLElement>(
-            jsInProcessRuntime.CreateFunc<IString, IHTMLElement>(selector => window.document.getElementById(selector)), null);
+            jsInProcessRuntime.CreateFunc<IString, IHTMLElement>(selector => window.document.getElementById(selector)));
 
-        domElements.forEach(jsInProcessRuntime.CreateAction<IHTMLElement>(elem =>
-        {
-            Console.WriteLine(elem.outerHTML.ConvertToDotNetString());
-        }), null);
-        
+        domElements.forEach(jsInProcessRuntime.CreateAction<IHTMLElement>(elem => Console.WriteLine(elem.outerHTML.ConvertToDotNetString())));
+
         var valuesAsNormalArray = values.UnsafeCastTo<IArray<IString>>();
         window.console.log(values);
 
@@ -89,7 +81,7 @@
         {
             return;
         }
-        var newElement = window.document.createElement(jsInProcessRuntime.CreateString("button"), null).UnsafeCastTo<IHTMLButtonElement>();
+        var newElement = window.document.createElement(jsInProcessRuntime.CreateString("button")).UnsafeCastTo<IHTMLButtonElement>();
         appendChildFunction.InvokeVoid(body, newElement);
         newElement.disabled = jsInProcessRuntime.CreateBoolean(true);
         newElement.innerText = jsInProcessRuntime.CreateString("My Button");
@@ -108,8 +100,10 @@
         Console.WriteLine(date.toLocaleString().ConvertToDotNetString());
         Console.WriteLine(date2.toLocaleString().ConvertToDotNetString());
 
-        var anchorElement = window.document.createElement(jsInProcessRuntime.CreateString("a"), null).UnsafeCastTo<IHTMLAnchorElement>();
-        anchorElement.setAttribute(jsInProcessRuntime.CreateString("href"), jsInProcessRuntime.CreateString("https://google.com"));
+        var anchorElement = window.document.createElement(jsInProcessRuntime.CreateString("a")).UnsafeCastTo<IHTMLAnchorElement>();
+        anchorElement.setAttribute(
+            jsInProcessRuntime.CreateString("href"),
+            jsInProcessRuntime.CreateString("https://google.com"));
         var attributes = anchorElement.getAttributeNames();
         var firstAttributeName = attributes[jsInProcessRuntime.CreateNumberFromInt(0)];
         Console.WriteLine($"First attribute name is: {firstAttributeName.ConvertToDotNetString()}");

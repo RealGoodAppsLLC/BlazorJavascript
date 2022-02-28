@@ -559,7 +559,14 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 stringBuilder.AppendLine(RenderIndent(3) + "where TJSObject : class, IJSObject");
                 stringBuilder.AppendLine(RenderIndent(2) + "{");
                 stringBuilder.AppendLine(RenderIndent(3) + $"var allArgs = new List<IJSObject> {{ {parameterNamesStringBuilder} }};");
-                stringBuilder.AppendLine(RenderIndent(3) + "allArgs.AddRange(additionalParams);");
+                stringBuilder.AppendLine(RenderIndent(3) + "if (additionalParams == null)");
+                stringBuilder.AppendLine(RenderIndent(3) + "{");
+                stringBuilder.AppendLine(RenderIndent(4) + "allArgs.Add(null);");
+                stringBuilder.AppendLine(RenderIndent(3) + "}");
+                stringBuilder.AppendLine(RenderIndent(3) + "else");
+                stringBuilder.AppendLine(RenderIndent(3) + "{");
+                stringBuilder.AppendLine(RenderIndent(4) + "allArgs.AddRange(additionalParams);");
+                stringBuilder.AppendLine(RenderIndent(3) + "}");
                 stringBuilder.AppendLine(RenderIndent(3) + "return self.CallConstructor<TJSObject>(allArgs.ToArray());");
                 stringBuilder.AppendLine(RenderIndent(2) + "}");
             }
@@ -610,7 +617,14 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 stringBuilder.AppendLine(RenderIndent(3) + "where TJSObject : class, IJSObject");
                 stringBuilder.AppendLine(RenderIndent(2) + "{");
                 stringBuilder.AppendLine(RenderIndent(3) + $"var allArgs = new List<IJSObject> {{ {parameterNamesStringBuilder} }};");
-                stringBuilder.AppendLine(RenderIndent(3) + "allArgs.AddRange(additionalParams);");
+                stringBuilder.AppendLine(RenderIndent(3) + "if (additionalParams == null)");
+                stringBuilder.AppendLine(RenderIndent(3) + "{");
+                stringBuilder.AppendLine(RenderIndent(4) + "allArgs.Add(null);");
+                stringBuilder.AppendLine(RenderIndent(3) + "}");
+                stringBuilder.AppendLine(RenderIndent(3) + "else");
+                stringBuilder.AppendLine(RenderIndent(3) + "{");
+                stringBuilder.AppendLine(RenderIndent(4) + "allArgs.AddRange(additionalParams);");
+                stringBuilder.AppendLine(RenderIndent(3) + "}");
                 stringBuilder.AppendLine(RenderIndent(3) + "var methodObj = self.GetPropertyOfObject<IFunction>(methodName);");
                 stringBuilder.AppendLine(RenderIndent(3) + "return methodObj.Invoke<TJSObject>(self, allArgs.ToArray());");
                 stringBuilder.AppendLine(RenderIndent(2) + "}");
@@ -618,7 +632,14 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
                 stringBuilder.AppendLine(RenderIndent(2) + $"public static void InvokeVoidMethodByName(this IJSObject self, string methodName, {parameterListStringBuilder}params IJSObject[] additionalParams)");
                 stringBuilder.AppendLine(RenderIndent(2) + "{");
                 stringBuilder.AppendLine(RenderIndent(3) + $"var allArgs = new List<IJSObject> {{ {parameterNamesStringBuilder} }};");
-                stringBuilder.AppendLine(RenderIndent(3) + "allArgs.AddRange(additionalParams);");
+                stringBuilder.AppendLine(RenderIndent(3) + "if (additionalParams == null)");
+                stringBuilder.AppendLine(RenderIndent(3) + "{");
+                stringBuilder.AppendLine(RenderIndent(4) + "allArgs.Add(null);");
+                stringBuilder.AppendLine(RenderIndent(3) + "}");
+                stringBuilder.AppendLine(RenderIndent(3) + "else");
+                stringBuilder.AppendLine(RenderIndent(3) + "{");
+                stringBuilder.AppendLine(RenderIndent(4) + "allArgs.AddRange(additionalParams);");
+                stringBuilder.AppendLine(RenderIndent(3) + "}");
                 stringBuilder.AppendLine(RenderIndent(3) + "var methodObj = self.GetPropertyOfObject<IFunction>(methodName);");
                 stringBuilder.AppendLine(RenderIndent(3) + "methodObj.InvokeVoid(self, allArgs.ToArray());");
                 stringBuilder.AppendLine(RenderIndent(2) + "}");
@@ -856,7 +877,7 @@ namespace RealGoodApps.BlazorJavascript.CodeGenerator
 
                 if (parameter.IsDotDotDot)
                 {
-                    parameterNamesRendered.Append($"{parameter.Name}.ToArray()");
+                    parameterNamesRendered.Append($"{parameter.Name}?.ToArray()");
                 }
                 else
                 {
