@@ -25,7 +25,7 @@ This is the primary goal of the project: Make it easy and natural-feeling to cal
 
 ## Getting Started
 
-1) Install the `RealGoodApps.BlazorJavascript.Interop` package from Nuget.
+1) Install the [RealGoodApps.BlazorJavascript.Interop](https://www.nuget.org/packages/RealGoodApps.BlazorJavascript.Interop) package from Nuget.
 2) Add the following initialization code to your `App.razor`:
 
 ```csharp
