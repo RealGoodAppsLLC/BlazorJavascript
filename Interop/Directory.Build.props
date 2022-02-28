@@ -1,0 +1,5 @@
+<Project>
+    <PropertyGroup>
+        <BlazorJavascriptInteropVersion>1.0.0</BlazorJavascriptInteropVersion>
+    </PropertyGroup>
+</Project>
