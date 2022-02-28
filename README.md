@@ -22,3 +22,53 @@ var computedProperties = window.getComputedStyle(element);
 ```
 
 This is the primary goal of the project: Make it easy and natural-feeling to call Javascript from your Blazor project.
+
+## Getting Started
+
+1) Install the `RealGoodApps.BlazorJavascript.Interop` package from Nuget.
+2) Add the following initialization code to your `App.razor`:
+
+```csharp
+@code {
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        if (_jsRuntime is not IJSInProcessRuntime jsInProcessRuntime)
+        {
+            throw new InvalidCastException("The JS runtime must be in-process.");
+        }
+
+        BlazorJavascriptInitialization.Initialize(jsInProcessRuntime);
+    }
+}
+```
+
+3) Start using it! Here is a simple example using `App.razor` that listens to the `window.onresize` event and prints out the current viewport size.
+
+```csharp
+@code {
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        if (_jsRuntime is not IJSInProcessRuntime jsInProcessRuntime)
+        {
+            throw new InvalidCastException("The JS runtime must be in-process.");
+        }
+
+        BlazorJavascriptInitialization.Initialize(jsInProcessRuntime);
+
+        var window = jsInProcessRuntime.GetWindow();
+
+        window?.addEventListener(
+            jsInProcessRuntime.CreateString("resize"),
+            jsInProcessRuntime.CreateAction(() =>
+            {
+                var windowWidth = window.innerWidth.ConvertToDotNetInt();
+                var windowHeight = window.innerHeight.ConvertToDotNetInt();
+                Console.WriteLine($"Window size: {windowWidth}px by {windowHeight}px");
+            }));
+    }
+}
+```
