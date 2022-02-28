@@ -16,10 +16,9 @@ This works fine for simple function calls on the window object, but there are se
 While this is not an exhaustive list of issues, it started to become obvious that it would be helpful if there was an API that allowed you to do stuff like this:
 
 ```csharp
-var window = GlobalThis.GetWindow(jsRuntime);
-var document = window.GetDocument();
-var element = document.GetElementById("myCoolElement");
-var computedProperties = window.GetComputedStyle(element);
+var window = jsRuntime.GetWindow();
+var element = window.document.getElementById(jsRuntime.CreateString("myCoolElement"));
+var computedProperties = window.getComputedStyle(element);
 ```
 
 This is the primary goal of the project: Make it easy and natural-feeling to call Javascript from your Blazor project.
