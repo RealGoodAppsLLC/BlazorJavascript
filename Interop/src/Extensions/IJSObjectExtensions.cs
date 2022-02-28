@@ -10,7 +10,7 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
     {
         public static TJSObject CallConstructor<TJSObject>(
             this IJSObject self,
-            params IJSObject?[]? args)
+            IJSObject?[] args)
             where TJSObject : class, IJSObject
         {
             var allParams = new List<object?>
@@ -18,12 +18,9 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
                 self.ObjectReference,
             };
 
-            if (args != null)
-            {
-                allParams.AddRange(args
-                    .Select(arg => arg?.ObjectReference)
-                    .ToList());
-            }
+            allParams.AddRange(args
+                .Select(arg => arg?.ObjectReference)
+                .ToList());
 
             var constructedObjectReference = self.Runtime.Invoke<IJSObjectReference?>("__blazorJavascript_constructorFunction", allParams.ToArray());
             return JSObjectFactory.CreateFromRuntimeObjectReference<TJSObject>(self.Runtime, constructedObjectReference)!;

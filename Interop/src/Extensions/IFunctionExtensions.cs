@@ -12,7 +12,7 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
         public static TJSObject? Invoke<TJSObject>(
             this IFunction self,
             IJSObject? thisObject,
-            params IJSObject?[]? args)
+            params IJSObject?[] args)
             where TJSObject : class, IJSObject
         {
             var allParams = new List<object?>
@@ -21,12 +21,9 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
                 thisObject?.ObjectReference,
             };
 
-            if (args != null)
-            {
-                allParams.AddRange(args
-                    .Select(arg => arg?.ObjectReference)
-                    .ToList());
-            }
+            allParams.AddRange(args
+                .Select(arg => arg?.ObjectReference)
+                .ToList());
 
             var returnValueObjectReference = self.Runtime.Invoke<IJSObjectReference?>(
                 "__blazorJavascript_invokeFunction",
@@ -38,7 +35,7 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
         public static void InvokeVoid(
             this IFunction self,
             IJSObject? thisObject,
-            params IJSObject?[]? args)
+            params IJSObject?[] args)
         {
             var allParams = new List<object?>
             {
@@ -46,12 +43,9 @@ namespace RealGoodApps.BlazorJavascript.Interop.Extensions
                 thisObject?.ObjectReference,
             };
 
-            if (args != null)
-            {
-                allParams.AddRange(args
-                    .Select(arg => arg?.ObjectReference)
-                    .ToList());
-            }
+            allParams.AddRange(args
+                .Select(arg => arg?.ObjectReference)
+                .ToList());
 
             self.Runtime.InvokeVoid(
                 "__blazorJavascript_invokeFunction",
