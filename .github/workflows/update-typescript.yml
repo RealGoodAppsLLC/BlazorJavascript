@@ -1,0 +1,29 @@
+name: Update Typescript
+
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+  
+  # Run every day at 12am to check for Typescript releases
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install xmlstarlet
+        run: sudo apt-get update && sudo apt-get install -y xmlstarlet
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install TSVersionChecker Dependencies
+        working-directory: TSVersionChecker
+        run: npm install
+      - name: Check for newer Typescript version
+        id: check-version
+        run: |
+          project_ts_version=$(cat ../TSDumper/package.json | jq -r '.dependencies.typescript')
+          latest_ts_version=$(npm view typescript version)
+          interop_version=$(xml sel -t -m /Project/PropertyGroup/BlazorJavascriptInteropVersion -v . ../Interop/Directory.Build.props)
+          npm run check -- $project_ts_version $latest_ts_version $interop_version
+        working-directory: TSVersionChecker
