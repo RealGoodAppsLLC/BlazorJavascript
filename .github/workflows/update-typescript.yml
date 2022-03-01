@@ -34,12 +34,13 @@ jobs:
           interop_version=$(xmlstarlet sel -t -m /Project/PropertyGroup/BlazorJavascriptInteropVersion -v . ../Interop/Directory.Build.props)
           npm run check -- $project_ts_version $latest_ts_version $interop_version
         working-directory: TSVersionChecker
-      - name: Setup git
+      - name: Setup GH CLI Pager
         run: |
-          echo ${{ secrets.SERVICE_PAT }} | gh auth login --with-token
           gh config set pager "less -FX"
       - name: Find existing PR
         id: find-existing-pr
+        env:
+          GH_TOKEN: ${{ secrets.SERVICE_PAT }}
         run: |
           pr_count=$(gh pr list -S "is:open label:automated-ts-version-bump" --json number,title | jq '. | length')
           echo ::set-output name=pr_count::$pr_count
@@ -60,17 +61,18 @@ jobs:
         uses: actions/checkout@v2
         with:
           token: '${{ secrets.SERVICE_PAT }}'
-      - name: Setup Git
+      - name: Setup Git and CLI
         run: |
           git config --global user.email "blazorjavascriptservice@gmail.com"
           git config --global user.name "BlazorJavascript Service Account"
-          echo ${{ secrets.SERVICE_PAT }} | gh auth login --with-token
           gh config set pager "less -FX"
       - name: Update TS version
         run: |
           xmlstarlet ed -L -O -P -u '/Project/PropertyGroup/BlazorJavascriptInteropVersion' -v $NEW_INTEROP_VERSION Interop/Directory.Build.props
           echo "$(cat TSDumper/package.json | jq --arg TSVER "$NEW_TS_VERSION" '.dependencies.typescript = $TSVER')" > TSDumper/package.json
       - name: Create PR
+        env:
+          GH_TOKEN: ${{ secrets.SERVICE_PAT }}
         run: |
           git checkout -b automated-version-bump-interop-$NEW_INTEROP_VERSION-ts-$NEW_TS_VERSION
           git add TSDumper/package.json Interop/Directory.Build.props
