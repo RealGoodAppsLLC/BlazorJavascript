@@ -58,9 +58,12 @@ function versionToString(version: Version): string {
     return `${version.Major}.${version.Minor}.${version.Patch}`;
 }
 
-function setOutput(currentVersion: Version, latestVersion: Version) {
-    console.log(`::set-output name=blazor_current_interop_version::${versionToString(currentVersion)}`);
-    console.log(`::set-output name=blazor_latest_interop_version::${versionToString(latestVersion)}`);
+function setOutput(currentInteropVersion: Version, newInteropVersion: Version, currentTypescriptVersion: Version, newTypescriptVersion: Version, bumpType: string) {
+    console.log(`::set-output name=blazor_current_interop_version::${versionToString(currentInteropVersion)}`);
+    console.log(`::set-output name=blazor_new_interop_version::${versionToString(newInteropVersion)}`);
+    console.log(`::set-output name=blazor_current_typescript_version::${versionToString(currentTypescriptVersion)}`);
+    console.log(`::set-output name=blazor_new_typescript_version::${versionToString(newTypescriptVersion)}`);
+    console.log(`::set-output name=blazor_bump_type::${bumpType}`);
 }
 
 if (process.argv.length < 5) {
@@ -76,16 +79,16 @@ const versionDiff = compareVersions(tsDumperVersion, latestTsVersion);
 switch (versionDiff) {
     case VersionDiff.Major: {
         const bumpedVersion = bumpMajorVersion(interopVersion);
-        setOutput(interopVersion, bumpedVersion);
+        setOutput(interopVersion, bumpedVersion, tsDumperVersion, latestTsVersion, VersionDiff[versionDiff].toLowerCase());
         break;
     }
     case VersionDiff.Minor || VersionDiff.Patch: {
         const bumpedVersion = bumpMinorVersion(interopVersion);
-        setOutput(interopVersion, bumpedVersion);
+        setOutput(interopVersion, bumpedVersion, tsDumperVersion, latestTsVersion, VersionDiff[versionDiff].toLowerCase());
         break;
     }
     case VersionDiff.Equal:
-        setOutput(interopVersion, interopVersion);
+        setOutput(interopVersion, interopVersion, tsDumperVersion, latestTsVersion, VersionDiff[versionDiff].toLowerCase());
         break;
     default:
         console.log('An unknown error occurred.');
