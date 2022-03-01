@@ -44,7 +44,7 @@ This is the primary goal of the project: Make it easy and natural-feeling to cal
 }
 ```
 
-3) Start using it! Here is a simple example using `App.razor` that listens to the `window.onresize` event and prints out the current viewport size.
+3) Start using it. Here is a simple example using `App.razor` that listens to the `window.onresize` event and prints out the current viewport size.
 
 ```csharp
 @code {
