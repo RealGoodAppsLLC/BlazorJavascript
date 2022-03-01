@@ -27,3 +27,46 @@ jobs:
           interop_version=$(xmlstarlet sel -t -m /Project/PropertyGroup/BlazorJavascriptInteropVersion -v . ../Interop/Directory.Build.props)
           npm run check -- $project_ts_version $latest_ts_version $interop_version
         working-directory: TSVersionChecker
+      - name: Setup git
+        run: |
+          echo ${{ secrets.SERVICE_PAT }} | gh auth login --with-token
+          gh config set pager "less -FX"
+      - name: Find existing PR
+        id: find-existing-pr
+        run: |
+          pr_count=$(gh pr list -S "is:open label:automated-ts-version-bump" --json number,title | jq '. | length')
+          echo ::set-output name=pr_count::$pr_count
+  update:
+    runs-on: ubuntu-latest
+    needs: check
+    if: ${{ jobs.check.steps.check-version.outputs.blazor_current_interop_version != jobs.check.steps.check-version.outputs.blazor_new_interop_version && jobs.check.steps.find-existing-pr.outputs.pr_count == 0 }}
+    env:
+      CURRENT_INTEROP_VERSION: ${{ jobs.check.steps.check-version.outputs.blazor_current_interop_version }}
+      NEW_INTEROP_VERSION: ${{ jobs.check.steps.check-version.outputs.blazor_new_interop_version }}
+      CURRENT_TS_VERSION: ${{ jobs.check.steps.check-version.outputs.blazor_current_typescript_version }}
+      NEW_TS_VERSION: ${{ jobs.check.steps.check-version.outputs.blazor_new_typescript_version }}
+      BUMP_TYPE: ${{ jobs.check.steps.check-version.outputs.blazor_bump_type }}
+    steps:
+      - name: Install xmlstarlet
+        run: sudo apt-get update && sudo apt-get install -y xmlstarlet
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          token: '${{ secrets.SERVICE_PAT }}'
+      - name: Setup Git
+        run: |
+          git config --global user.email "blazorjavascriptservice@gmail.com"
+          git config --global user.name "BlazorJavascript Service Account"
+          echo ${{ secrets.SERVICE_PAT }} | gh auth login --with-token
+          gh config set pager "less -FX"
+      - name: Update TS version
+        run: |
+          xmlstarlet ed -L -O -P -u '/Project/PropertyGroup/BlazorJavascriptInteropVersion' -v $NEW_INTEROP_VERSION Interop/Directory.Build.props
+          echo "$(cat TSDumper/package.json | jq --arg TSVER "$NEW_TS_VERSION" '.dependencies.typescript = $TSVER')" > TSDumper/package.json
+      - name: Create PR
+        run: |
+          git checkout -b automated-version-bump-interop-$NEW_INTEROP_VERSION-ts-$NEW_TS_VERSION
+          git add TSDumper/package.json Interop/Directory.Build.props
+          git commit -m "Interop+TSDumper: Bumping the Interop and TSDumper TypeScript version" -m "This bumps the TSDumper's TypeScript version from $CURRENT_TS_VERSION to $NEW_TS_VERSION, which is a $BUMP_TYPE version bump. As a result, we are bumping the Interop project from version $CURRENT_INTEROP_VERSION to $NEW_INTEROP_VERSION."
+          git push origin automated-version-bump-interop-$NEW_INTEROP_VERSION-ts-$NEW_TS_VERSION
+          gh pr create -f -l "automated-ts-version-bump"
