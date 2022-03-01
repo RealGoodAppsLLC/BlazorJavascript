@@ -12,6 +12,6 @@ $ npm install
 # Run the version checker
 $ project_ts_version=$(cat ../TSDumper/package.json | jq -r '.dependencies.typescript')
 $ latest_ts_version=$(npm view typescript version)
-$ interop_version=$(xml sel -t -m /Project/PropertyGroup/BlazorJavascriptInteropVersion -v . ../Interop/Directory.Build.props)
+$ interop_version=$(xmlstarlet sel -t -m /Project/PropertyGroup/BlazorJavascriptInteropVersion -v . ../Interop/Directory.Build.props)
 $ npm run check -- $project_ts_version $latest_ts_version $interop_version
 ```
