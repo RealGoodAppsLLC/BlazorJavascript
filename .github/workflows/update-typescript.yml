@@ -11,6 +11,13 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    outputs:
+      blazor_current_interop_version: ${{ steps.check-version.outputs.blazor_current_interop_version }}
+      blazor_new_interop_version: ${{ steps.check-version.outputs.blazor_new_interop_version }}
+      blazor_current_typescript_version: ${{ steps.check-version.outputs.blazor_current_typescript_version }}
+      blazor_new_typescript_version: ${{ steps.check-version.outputs.blazor_new_typescript_version }}
+      blazor_bump_type: ${{ steps.check-version.outputs.blazor_bump_type }}
+      pr_count: ${{ steps.find-existing-pr.outputs.pr_count }}
     steps:
       - name: Install xmlstarlet
         run: sudo apt-get update && sudo apt-get install -y xmlstarlet
@@ -39,13 +46,13 @@ jobs:
   update:
     runs-on: ubuntu-latest
     needs: check
-    if: ${{ jobs.check.steps.check-version.outputs.blazor_current_interop_version != jobs.check.steps.check-version.outputs.blazor_new_interop_version && jobs.check.steps.find-existing-pr.outputs.pr_count == 0 }}
+    if: ${{ needs.check.outputs.blazor_current_interop_version != needs.check.outputs.blazor_new_interop_version && needs.check.outputs.pr_count == 0 }}
     env:
-      CURRENT_INTEROP_VERSION: ${{ jobs.check.steps.check-version.outputs.blazor_current_interop_version }}
-      NEW_INTEROP_VERSION: ${{ jobs.check.steps.check-version.outputs.blazor_new_interop_version }}
-      CURRENT_TS_VERSION: ${{ jobs.check.steps.check-version.outputs.blazor_current_typescript_version }}
-      NEW_TS_VERSION: ${{ jobs.check.steps.check-version.outputs.blazor_new_typescript_version }}
-      BUMP_TYPE: ${{ jobs.check.steps.check-version.outputs.blazor_bump_type }}
+      CURRENT_INTEROP_VERSION: ${{ needs.check.outputs.blazor_current_interop_version }}
+      NEW_INTEROP_VERSION: ${{ needs.check.outputs.blazor_new_interop_version }}
+      CURRENT_TS_VERSION: ${{ needs.check.outputs.blazor_current_typescript_version }}
+      NEW_TS_VERSION: ${{ needs.check.outputs.blazor_new_typescript_version }}
+      BUMP_TYPE: ${{ needs.check.outputs.blazor_bump_type }}
     steps:
       - name: Install xmlstarlet
         run: sudo apt-get update && sudo apt-get install -y xmlstarlet
