@@ -24,6 +24,12 @@ jobs:
         with:
           dotnet-version: | 
             6.0.x
+      - name: Install TSVersionChecker Depdencies
+        working-directory: repo/TSVersionChecker
+        run: npm install
+      - name: Run TSVersionChecker Tests
+        working-directory: repo/TSVersionChecker
+        run: npm run test
       - name: Install TSDumper Dependencies
         working-directory: repo/TSDumper
         run: npm install
