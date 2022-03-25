@@ -82,7 +82,7 @@ switch (versionDiff) {
         setOutput(interopVersion, bumpedVersion, tsDumperVersion, latestTsVersion, VersionDiff[versionDiff].toLowerCase());
         break;
     }
-    case VersionDiff.Minor {
+    case VersionDiff.Minor: {
         const bumpedVersion = bumpMinorVersion(interopVersion);
         setOutput(interopVersion, bumpedVersion, tsDumperVersion, latestTsVersion, VersionDiff[versionDiff].toLowerCase());
         break;
