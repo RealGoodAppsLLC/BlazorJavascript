@@ -26,6 +26,9 @@ jobs:
       - name: Install TSVersionChecker Dependencies
         working-directory: TSVersionChecker
         run: npm install
+      - name: Run TSVersionChecker Tests
+        working-directory: TSVersionChecker
+        run: npm run test
       - name: Check for newer Typescript version
         id: check-version
         run: |
