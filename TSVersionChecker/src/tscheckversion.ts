@@ -22,7 +22,7 @@ const latestTsVersion = SemanticVersion.fromString(process.argv[3]);
 const interopVersion = SemanticVersion.fromString(process.argv[4]);
 const versionDiff = tsDumperVersion.compare(latestTsVersion);
 
-let bumpedVersion: SemanticVersion | null = null;
+let bumpedVersion: SemanticVersion;
 switch (versionDiff) {
     case SemanticVersionDiff.Major: {
         bumpedVersion = interopVersion.bumpedMajorVersion();
@@ -44,6 +44,4 @@ switch (versionDiff) {
         process.exit(1);
 }
 
-if (bumpedVersion !== null) {
-    setOutput(interopVersion, bumpedVersion, tsDumperVersion, latestTsVersion, SemanticVersionDiff[versionDiff].toLowerCase());
-}
+setOutput(interopVersion, bumpedVersion, tsDumperVersion, latestTsVersion, SemanticVersionDiff[versionDiff].toLowerCase());
