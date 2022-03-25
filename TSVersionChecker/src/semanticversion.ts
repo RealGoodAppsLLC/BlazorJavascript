@@ -28,7 +28,7 @@ export class SemanticVersion {
     return this.patch;
   }
 
-  static fromString(versionString: String): SemanticVersion {
+  static fromString(versionString: string): SemanticVersion {
     const parts = versionString.split('.');
 
     if (parts.length !== 3) {
